@@ -239,6 +239,11 @@ export default function DashboardPage() {
                       <span className={`text-xs ${priority.color}`}>
                         优先级: {priority.label}
                       </span>
+                      {project.status === 'in_progress' && (
+                        <Badge className="bg-blue-100 text-blue-700">
+                          {project.currentPhase}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {project.location} · {project.area}㎡ · {project.style}
@@ -246,8 +251,8 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="text-sm font-medium">进度 {project.progress}%</p>
-                      <Progress value={project.progress} className="w-24 h-2" />
+                      <p className="text-sm font-medium">进度 {project.overallProgress}%</p>
+                      <Progress value={project.overallProgress} className="w-24 h-2" />
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">

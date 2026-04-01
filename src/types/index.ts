@@ -4,6 +4,19 @@ export type ProjectStatus = 'pending' | 'in_progress' | 'completed' | 'on_hold';
 // 项目优先级
 export type ProjectPriority = 'low' | 'medium' | 'high';
 
+// 设计阶段
+export type DesignPhase = '平面设计' | 'SU模型推敲' | '效果图' | '施工图' | '设计完成';
+
+// 阶段进度状态
+export interface PhaseProgress {
+  phase: DesignPhase;
+  status: 'pending' | 'in_progress' | 'completed';
+  progress: number; // 该阶段内的进度 0-100
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+}
+
 // 项目类型
 export interface Project {
   id: string;
@@ -19,7 +32,9 @@ export interface Project {
   location: string;
   area: number; // 面积（平方米）
   style: string; // 设计风格
-  progress: number; // 进度百分比
+  phases: PhaseProgress[]; // 阶段化进度
+  currentPhase: DesignPhase; // 当前阶段
+  overallProgress: number; // 总体进度百分比（自动计算）
   createdAt: string;
   updatedAt: string;
 }

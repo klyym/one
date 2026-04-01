@@ -161,9 +161,12 @@ export default function DesignersPage() {
                           className="flex items-center justify-between text-xs bg-muted rounded px-2 py-1"
                         >
                           <span className="truncate flex-1">{project.name}</span>
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            {project.progress}%
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground">{project.currentPhase}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {project.overallProgress}%
+                            </Badge>
+                          </div>
                         </div>
                       ))}
                     </div>

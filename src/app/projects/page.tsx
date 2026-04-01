@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -23,8 +23,21 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Filter } from 'lucide-react';
-import type { Project, ProjectStatus, ProjectPriority } from '@/types';
+import { Plus, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { PhaseProgressDisplay } from '@/components/project/phase-progress';
+import type { Project, ProjectStatus, ProjectPriority, PhaseProgress } from '@/types';
+
+// 设计阶段列表
+const DESIGN_PHASES = ['平面设计', 'SU模型推敲', '效果图', '施工图', '设计完成'] as const;
+
+// 创建默认的阶段进度
+const createDefaultPhases = (): PhaseProgress[] => {
+  return DESIGN_PHASES.map((phase) => ({
+    phase,
+    status: 'pending' as const,
+    progress: 0,
+  }));
+};
 
 export default function ProjectsPage() {
   const { projects, clients, designers, addProject, updateProject, deleteProject } = useStore();
@@ -32,6 +45,8 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [phases, setPhases] = useState<PhaseProgress[]>(createDefaultPhases());
 
   // 过滤项目
   const filteredProjects = projects.filter(project => {
@@ -40,6 +55,18 @@ export default function ProjectsPage() {
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const toggleProjectExpansion = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
+      }
+      return next;
+    });
+  };
 
   const handleSaveProject = (formData: FormData) => {
     const projectData = {
@@ -55,13 +82,16 @@ export default function ProjectsPage() {
       location: formData.get('location') as string,
       area: Number(formData.get('area')),
       style: formData.get('style') as string,
-      progress: Number(formData.get('progress')),
+      phases: editingProject?.phases || phases,
+      currentPhase: editingProject?.currentPhase || '平面设计',
+      overallProgress: editingProject?.overallProgress || 0,
     };
 
     if (editingProject) {
       updateProject(editingProject.id, projectData);
     } else {
       addProject(projectData);
+      setPhases(createDefaultPhases()); // 重置表单
     }
 
     setIsDialogOpen(false);
@@ -70,6 +100,13 @@ export default function ProjectsPage() {
 
   const openEditDialog = (project: Project) => {
     setEditingProject(project);
+    setPhases(project.phases);
+    setIsDialogOpen(true);
+  };
+
+  const openNewDialog = () => {
+    setEditingProject(null);
+    setPhases(createDefaultPhases());
     setIsDialogOpen(true);
   };
 
@@ -92,6 +129,13 @@ export default function ProjectsPage() {
     return priorityMap[priority] || { label: priority, className: 'bg-gray-100' };
   };
 
+  const getCurrentPhaseBadge = (currentPhase: string, status: string) => {
+    if (status === 'completed') {
+      return <Badge className="bg-green-100 text-green-700">设计完成</Badge>;
+    }
+    return <Badge className="bg-blue-100 text-blue-700">{currentPhase}</Badge>;
+  };
+
   return (
     <div className="space-y-6">
       {/* 页面标题和操作 */}
@@ -103,12 +147,12 @@ export default function ProjectsPage() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingProject(null)}>
+            <Button onClick={openNewDialog}>
               <Plus className="h-4 w-4 mr-2" />
               新建项目
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingProject ? '编辑项目' : '新建项目'}
@@ -255,19 +299,6 @@ export default function ProjectsPage() {
               </div>
 
               <div>
-                <Label htmlFor="progress">进度（%）</Label>
-                <Input
-                  id="progress"
-                  name="progress"
-                  type="number"
-                  min="0"
-                  max="100"
-                  defaultValue={editingProject?.progress || 0}
-                  required
-                />
-              </div>
-
-              <div>
                 <Label htmlFor="description">项目描述</Label>
                 <Textarea
                   id="description"
@@ -328,6 +359,7 @@ export default function ProjectsPage() {
           const priority = getPriorityBadge(project.priority);
           const client = clients.find(c => c.id === project.clientId);
           const designer = designers.find(d => d.id === project.designerId);
+          const isExpanded = expandedProjects.has(project.id);
 
           return (
             <Card key={project.id} className="hover:shadow-md transition-shadow">
@@ -338,6 +370,7 @@ export default function ProjectsPage() {
                       <h3 className="text-lg font-semibold">{project.name}</h3>
                       <Badge variant={status.variant}>{status.label}</Badge>
                       <Badge className={priority.className}>{priority.label}</Badge>
+                      {getCurrentPhaseBadge(project.currentPhase, project.status)}
                     </div>
                     <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-muted-foreground mb-4">
                       <div>📍 地址：{project.location}</div>
@@ -350,19 +383,51 @@ export default function ProjectsPage() {
                     <p className="text-sm text-muted-foreground mb-4">
                       {project.description}
                     </p>
+                    
+                    {/* 总体进度 */}
                     <div className="flex items-center gap-4">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">项目进度</span>
-                          <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                          <span className="text-sm font-medium">总体进度</span>
+                          <span className="text-sm text-muted-foreground">{project.overallProgress}%</span>
                         </div>
-                        <Progress value={project.progress} className="h-2" />
+                        <Progress value={project.overallProgress} className="h-2" />
                       </div>
                       <div className="text-sm text-muted-foreground">
                         开始：{project.startDate}
                         {project.endDate && ` · 结束：${project.endDate}`}
                       </div>
                     </div>
+
+                    {/* 展开查看阶段详情 */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => toggleProjectExpansion(project.id)}
+                    >
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                          收起阶段详情
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                          查看阶段详情
+                        </>
+                      )}
+                    </Button>
+
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t">
+                        <PhaseProgressDisplay
+                          phases={project.phases}
+                          overallProgress={project.overallProgress}
+                          currentPhase={project.currentPhase}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 ml-4">
                     <Button

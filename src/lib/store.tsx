@@ -1,7 +1,44 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Project, Client, Designer, DesignCase } from '@/types';
+import type { Project, Client, Designer, DesignCase, PhaseProgress, DesignPhase } from '@/types';
+
+// 设计阶段列表
+const DESIGN_PHASES: DesignPhase[] = ['平面设计', 'SU模型推敲', '效果图', '施工图', '设计完成'];
+
+// 创建默认的阶段进度
+const createDefaultPhases = (): PhaseProgress[] => {
+  return DESIGN_PHASES.map((phase, index) => ({
+    phase,
+    status: index === 0 ? 'pending' : 'pending',
+    progress: 0,
+  }));
+};
+
+// 计算总体进度
+const calculateOverallProgress = (phases: PhaseProgress[]): number => {
+  const totalPhases = phases.length;
+  const completedPhases = phases.filter(p => p.status === 'completed').length;
+  const currentPhase = phases.find(p => p.status === 'in_progress');
+  
+  if (currentPhase) {
+    const currentPhaseIndex = phases.findIndex(p => p.phase === currentPhase.phase);
+    return Math.round(((completedPhases + currentPhase.progress / 100) / totalPhases) * 100);
+  }
+  
+  return Math.round((completedPhases / totalPhases) * 100);
+};
+
+// 获取当前阶段
+const getCurrentPhase = (phases: PhaseProgress[]): DesignPhase => {
+  const inProgressPhase = phases.find(p => p.status === 'in_progress');
+  if (inProgressPhase) return inProgressPhase.phase;
+  
+  const pendingPhase = phases.find(p => p.status === 'pending');
+  if (pendingPhase) return pendingPhase.phase;
+  
+  return '设计完成';
+};
 
 // 初始数据
 const initialClients: Client[] = [
@@ -98,7 +135,15 @@ const initialProjects: Project[] = [
     location: '北京市朝阳区望京SOHO',
     area: 800,
     style: '现代简约',
-    progress: 65,
+    phases: [
+      { phase: '平面设计', status: 'completed', progress: 100 },
+      { phase: 'SU模型推敲', status: 'completed', progress: 100 },
+      { phase: '效果图', status: 'in_progress', progress: 65 },
+      { phase: '施工图', status: 'pending', progress: 0 },
+      { phase: '设计完成', status: 'pending', progress: 0 },
+    ],
+    currentPhase: '效果图',
+    overallProgress: 53,
     createdAt: '2024-10-01',
     updatedAt: '2024-12-10',
   },
@@ -115,7 +160,15 @@ const initialProjects: Project[] = [
     location: '上海市浦东新区陆家嘴',
     area: 320,
     style: '轻奢',
-    progress: 35,
+    phases: [
+      { phase: '平面设计', status: 'completed', progress: 100 },
+      { phase: 'SU模型推敲', status: 'in_progress', progress: 75 },
+      { phase: '效果图', status: 'pending', progress: 0 },
+      { phase: '施工图', status: 'pending', progress: 0 },
+      { phase: '设计完成', status: 'pending', progress: 0 },
+    ],
+    currentPhase: 'SU模型推敲',
+    overallProgress: 35,
     createdAt: '2024-10-20',
     updatedAt: '2024-12-08',
   },
@@ -133,7 +186,15 @@ const initialProjects: Project[] = [
     location: '深圳市南山区科技园',
     area: 1200,
     style: '工业风',
-    progress: 100,
+    phases: [
+      { phase: '平面设计', status: 'completed', progress: 100 },
+      { phase: 'SU模型推敲', status: 'completed', progress: 100 },
+      { phase: '效果图', status: 'completed', progress: 100 },
+      { phase: '施工图', status: 'completed', progress: 100 },
+      { phase: '设计完成', status: 'completed', progress: 100 },
+    ],
+    currentPhase: '设计完成',
+    overallProgress: 100,
     createdAt: '2024-05-15',
     updatedAt: '2024-10-30',
   },
@@ -150,7 +211,9 @@ const initialProjects: Project[] = [
     location: '北京市顺义区中央别墅区',
     area: 450,
     style: '新中式',
-    progress: 0,
+    phases: createDefaultPhases(),
+    currentPhase: '平面设计',
+    overallProgress: 0,
     createdAt: '2024-12-05',
     updatedAt: '2024-12-05',
   },
@@ -167,7 +230,15 @@ const initialProjects: Project[] = [
     location: '深圳市南山区',
     area: 280,
     style: '现代简约',
-    progress: 20,
+    phases: [
+      { phase: '平面设计', status: 'completed', progress: 100 },
+      { phase: 'SU模型推敲', status: 'in_progress', progress: 20 },
+      { phase: '效果图', status: 'pending', progress: 0 },
+      { phase: '施工图', status: 'pending', progress: 0 },
+      { phase: '设计完成', status: 'pending', progress: 0 },
+    ],
+    currentPhase: 'SU模型推敲',
+    overallProgress: 24,
     createdAt: '2024-11-15',
     updatedAt: '2024-12-12',
   },
