@@ -54,6 +54,27 @@ export interface Client {
   lastContactAt?: string;
 }
 
+// 跟进记录
+export interface FollowUp {
+  id: string;
+  clientId: string;
+  type: 'call' | 'visit' | 'email' | 'wechat' | 'other'; // 跟进方式
+  content: string; // 跟进内容
+  nextAction?: string; // 下一步计划
+  nextDate?: string; // 下次跟进日期
+  designerId?: string; // 跟进人
+  createdAt: string;
+}
+
+// 跟进类型标签
+export const FOLLOW_UP_TYPES = {
+  call: { label: '电话', icon: '📞' },
+  visit: { label: '上门', icon: '🏠' },
+  email: { label: '邮件', icon: '📧' },
+  wechat: { label: '微信', icon: '💬' },
+  other: { label: '其他', icon: '📝' },
+} as const;
+
 // 设计师
 export interface Designer {
   id: string;

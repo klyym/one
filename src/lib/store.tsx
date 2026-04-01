@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Project, Client, Designer, DesignCase, PhaseProgress, DesignPhase } from '@/types';
+import type { Project, Client, Designer, DesignCase, PhaseProgress, DesignPhase, FollowUp } from '@/types';
 
 // 设计阶段列表
 const DESIGN_PHASES: DesignPhase[] = ['平面设计', 'SU模型推敲', '效果图', '施工图', '设计完成'];
@@ -303,12 +303,67 @@ const initialCases: DesignCase[] = [
   },
 ];
 
+// 初始跟进记录
+const initialFollowUps: FollowUp[] = [
+  {
+    id: '1',
+    clientId: '1',
+    type: 'call',
+    content: '电话沟通了望京SOHO项目的进度，客户对效果图阶段表示满意',
+    nextAction: '准备效果图初稿',
+    nextDate: '2024-12-15',
+    designerId: '1',
+    createdAt: '2024-12-10',
+  },
+  {
+    id: '2',
+    clientId: '1',
+    type: 'visit',
+    content: '上门测量别墅现场，记录了房屋结构和客户需求',
+    nextAction: '完成平面设计方案',
+    nextDate: '2025-01-10',
+    designerId: '3',
+    createdAt: '2024-12-05',
+  },
+  {
+    id: '3',
+    clientId: '2',
+    type: 'wechat',
+    content: '微信确认了陆家嘴住宅项目的材料选择，客户偏向现代轻奢风格',
+    nextAction: '提交SU模型方案',
+    nextDate: '2024-12-12',
+    designerId: '2',
+    createdAt: '2024-12-08',
+  },
+  {
+    id: '4',
+    clientId: '3',
+    type: 'visit',
+    content: '现场考察科技园办公楼，与客户讨论空间布局需求',
+    nextAction: '准备施工图',
+    nextDate: '2024-10-25',
+    designerId: '1',
+    createdAt: '2024-10-20',
+  },
+  {
+    id: '5',
+    clientId: '3',
+    type: 'email',
+    content: '发送创意工作室的设计方案和报价',
+    nextAction: '等待客户反馈',
+    nextDate: '2024-12-15',
+    designerId: '2',
+    createdAt: '2024-12-12',
+  },
+];
+
 // Context 类型定义
 interface StoreContextType {
   projects: Project[];
   clients: Client[];
   designers: Designer[];
   cases: DesignCase[];
+  followUps: FollowUp[];
   
   // 项目操作
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -329,6 +384,10 @@ interface StoreContextType {
   addCase: (caseItem: Omit<DesignCase, 'id' | 'createdAt' | 'views' | 'likes'>) => void;
   updateCase: (id: string, updates: Partial<DesignCase>) => void;
   deleteCase: (id: string) => void;
+  
+  // 跟进记录操作
+  addFollowUp: (followUp: Omit<FollowUp, 'id' | 'createdAt'>) => void;
+  deleteFollowUp: (id: string) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -338,6 +397,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [designers, setDesigners] = useState<Designer[]>(initialDesigners);
   const [cases, setCases] = useState<DesignCase[]>(initialCases);
+  const [followUps, setFollowUps] = useState<FollowUp[]>(initialFollowUps);
 
   // 项目操作
   const addProject = (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -430,6 +490,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCases(prev => prev.filter(c => c.id !== id));
   };
 
+  // 跟进记录操作
+  const addFollowUp = (followUp: Omit<FollowUp, 'id' | 'createdAt'>) => {
+    const newFollowUp: FollowUp = {
+      ...followUp,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setFollowUps(prev => [newFollowUp, ...prev]);
+    
+    // 更新客户的最后联系时间
+    setClients(prev =>
+      prev.map(c =>
+        c.id === followUp.clientId
+          ? { ...c, lastContactAt: newFollowUp.createdAt }
+          : c
+      )
+    );
+  };
+
+  const deleteFollowUp = (id: string) => {
+    setFollowUps(prev => prev.filter(f => f.id !== id));
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -437,6 +520,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         clients,
         designers,
         cases,
+        followUps,
         addProject,
         updateProject,
         deleteProject,
@@ -449,6 +533,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addCase,
         updateCase,
         deleteCase,
+        addFollowUp,
+        deleteFollowUp,
       }}
     >
       {children}

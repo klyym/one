@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -14,14 +15,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Phone, Mail, MapPin, Building, Calendar } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Building, Calendar, MessageCircle } from 'lucide-react';
+import { FollowUpList } from '@/components/client/follow-up-list';
 import type { Client } from '@/types';
 
 export default function ClientsPage() {
-  const { clients, projects, addClient, updateClient, deleteClient } = useStore();
+  const { clients, projects, followUps, addClient, updateClient, deleteClient } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [followUpClientId, setFollowUpClientId] = useState<string | null>(null);
 
   // 过滤客户
   const filteredClients = clients.filter(client =>
@@ -52,6 +55,10 @@ export default function ClientsPage() {
 
   const getClientProjects = (clientId: string) => {
     return projects.filter(p => p.clientId === clientId);
+  };
+
+  const getClientFollowUps = (clientId: string) => {
+    return followUps.filter(f => f.clientId === clientId);
   };
 
   return (
@@ -170,6 +177,7 @@ export default function ClientsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredClients.map((client) => {
           const clientProjects = getClientProjects(client.id);
+          const clientFollowUps = getClientFollowUps(client.id);
           
           return (
             <Card key={client.id} className="hover:shadow-md transition-shadow">
@@ -184,7 +192,7 @@ export default function ClientsPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -232,6 +240,10 @@ export default function ClientsPage() {
                       ¥{(client.totalSpent / 10000).toFixed(0)}万
                     </span>
                   </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">跟进记录</span>
+                    <Badge variant="secondary">{clientFollowUps.length} 条</Badge>
+                  </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground flex items-center">
                       <Calendar className="h-3 w-3 mr-1" />
@@ -262,6 +274,17 @@ export default function ClientsPage() {
                     <p className="text-xs text-muted-foreground">{client.notes}</p>
                   </div>
                 )}
+
+                {/* 查看跟进按钮 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-3"
+                  onClick={() => setFollowUpClientId(client.id)}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  查看跟进记录
+                </Button>
               </CardContent>
             </Card>
           );
@@ -273,6 +296,15 @@ export default function ClientsPage() {
           </div>
         )}
       </div>
+
+      {/* 跟进记录弹窗 */}
+      <Dialog open={!!followUpClientId} onOpenChange={() => setFollowUpClientId(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          {followUpClientId && (
+            <FollowUpList clientId={followUpClientId} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
