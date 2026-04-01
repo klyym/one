@@ -1,18 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Bell, Shield, Palette, CheckCircle, AlertCircle, Eye, EyeOff, Key, User, Mail } from 'lucide-react';
+import { Settings, Bell, Shield, Palette, CheckCircle, AlertCircle, Eye, EyeOff, Key, User, Mail, Save, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Separator } from '@/components/ui/separator';
 
 export default function SettingsPage() {
-  const { user, changePassword } = useAuth();
+  const { user, changePassword, updateProfile } = useAuth();
   
+  // 用户信息修改状态
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [profileResult, setProfileResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [hasProfileChanges, setHasProfileChanges] = useState(false);
+
   // 密码修改状态
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -20,8 +27,23 @@ export default function SettingsPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [passwordResult, setPasswordResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // 初始化用户信息
+  useEffect(() => {
+    if (user) {
+      setEditName(user.name);
+      setEditEmail(user.email);
+    }
+  }, [user]);
+
+  // 检测用户信息变更
+  useEffect(() => {
+    if (user) {
+      setHasProfileChanges(editName !== user.name || editEmail !== user.email);
+    }
+  }, [editName, editEmail, user]);
 
   // 密码强度检测
   const getPasswordStrength = (password: string): { level: string; color: string; percentage: number } => {
@@ -43,6 +65,46 @@ export default function SettingsPage() {
 
   const passwordStrength = getPasswordStrength(newPassword);
 
+  // 处理用户信息修改
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileResult(null);
+
+    if (!editName.trim()) {
+      setProfileResult({ type: 'error', message: '用户名不能为空' });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editEmail)) {
+      setProfileResult({ type: 'error', message: '请输入有效的邮箱地址' });
+      return;
+    }
+
+    setIsProfileSubmitting(true);
+
+    try {
+      const result = await updateProfile(editName, editEmail);
+      setProfileResult({
+        type: result.success ? 'success' : 'error',
+        message: result.message,
+      });
+    } catch {
+      setProfileResult({ type: 'error', message: '修改失败，请稍后重试' });
+    } finally {
+      setIsProfileSubmitting(false);
+    }
+  };
+
+  const handleResetProfile = () => {
+    if (user) {
+      setEditName(user.name);
+      setEditEmail(user.email);
+    }
+    setProfileResult(null);
+  };
+
+  // 处理密码修改
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordResult(null);
@@ -68,7 +130,7 @@ export default function SettingsPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsPasswordSubmitting(true);
 
     try {
       const result = await changePassword(currentPassword, newPassword);
@@ -86,7 +148,7 @@ export default function SettingsPage() {
     } catch {
       setPasswordResult({ type: 'error', message: '密码修改失败，请稍后重试' });
     } finally {
-      setIsSubmitting(false);
+      setIsPasswordSubmitting(false);
     }
   };
 
@@ -110,41 +172,120 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            账户信息
+            个人信息
           </CardTitle>
-          <CardDescription>当前登录账户的基本信息</CardDescription>
+          <CardDescription>修改您的用户名和登录邮箱</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
-                <User className="h-5 w-5 text-primary-foreground" />
+        <CardContent>
+          <form onSubmit={handleProfileSubmit} className="space-y-6">
+            {/* 修改结果提示 */}
+            {profileResult && (
+              <div
+                className={`flex items-center gap-2 p-3 rounded-lg ${
+                  profileResult.type === 'success'
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}
+              >
+                {profileResult.type === 'success' ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                {profileResult.message}
               </div>
+            )}
+
+            <div className="grid gap-6">
+              {/* 用户名 */}
               <div>
-                <p className="text-sm text-muted-foreground">用户名</p>
-                <p className="font-medium">{user?.name || '-'}</p>
+                <Label htmlFor="edit-name" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  用户名
+                </Label>
+                <Input
+                  id="edit-name"
+                  value={editName}
+                  onChange={(e) => {
+                    setEditName(e.target.value);
+                    setProfileResult(null);
+                  }}
+                  placeholder="请输入用户名"
+                  className="mt-1.5"
+                />
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                <Mail className="h-5 w-5 text-muted-foreground" />
-              </div>
+
+              {/* 邮箱 */}
               <div>
-                <p className="text-sm text-muted-foreground">邮箱</p>
-                <p className="font-medium">{user?.email || '-'}</p>
+                <Label htmlFor="edit-email" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  登录邮箱
+                </Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => {
+                    setEditEmail(e.target.value);
+                    setProfileResult(null);
+                  }}
+                  placeholder="请输入邮箱"
+                  className="mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  修改邮箱后，下次登录请使用新邮箱
+                </p>
               </div>
+
+              <Separator />
+
+              {/* 用户角色（只读） */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">用户角色</p>
+                  <p className="text-sm text-muted-foreground">当前账户的权限角色（不可修改）</p>
+                </div>
+                <Badge variant={user?.role === '管理员' ? 'default' : 'secondary'}>
+                  {user?.role || '-'}
+                </Badge>
+              </div>
+
+              {/* 提示信息 */}
+              {hasProfileChanges && (
+                <div className="p-3 bg-blue-50 text-blue-700 rounded-lg text-sm border border-blue-200">
+                  <p className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    您有未保存的更改
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">用户角色</p>
-              <p className="text-sm text-muted-foreground">当前账户的权限角色</p>
+
+            {/* 操作按钮 */}
+            <div className="flex gap-3">
+              <Button type="submit" disabled={isProfileSubmitting || !hasProfileChanges}>
+                {isProfileSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
+                    保存中...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    保存更改
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetProfile}
+                disabled={!hasProfileChanges}
+              >
+                重置
+              </Button>
             </div>
-            <Badge variant={user?.role === '管理员' ? 'default' : 'secondary'}>
-              {user?.role || '-'}
-            </Badge>
-          </div>
+          </form>
         </CardContent>
       </Card>
 
@@ -319,8 +460,8 @@ export default function SettingsPage() {
 
             {/* 操作按钮 */}
             <div className="flex gap-3">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button type="submit" disabled={isPasswordSubmitting}>
+                {isPasswordSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
                     修改中...
