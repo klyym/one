@@ -323,6 +323,7 @@ interface StoreContextType {
   // 设计师操作
   addDesigner: (designer: Omit<Designer, 'id' | 'joinedAt' | 'activeProjects' | 'completedProjects'>) => void;
   updateDesigner: (id: string, updates: Partial<Designer>) => void;
+  deleteDesigner: (id: string) => void;
   
   // 案例操作
   addCase: (caseItem: Omit<DesignCase, 'id' | 'createdAt' | 'views' | 'likes'>) => void;
@@ -403,6 +404,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const deleteDesigner = (id: string) => {
+    setDesigners(prev => prev.filter(d => d.id !== id));
+  };
+
   // 案例操作
   const addCase = (caseItem: Omit<DesignCase, 'id' | 'createdAt' | 'views' | 'likes'>) => {
     const newCase: DesignCase = {
@@ -440,6 +445,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         deleteClient,
         addDesigner,
         updateDesigner,
+        deleteDesigner,
         addCase,
         updateCase,
         deleteCase,

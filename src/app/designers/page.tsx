@@ -1,24 +1,183 @@
 'use client';
 
+import { useState } from 'react';
 import { useStore } from '@/lib/store';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Mail, Phone, Calendar, Award, Briefcase, Star } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Mail, Phone, Calendar, Award, Briefcase, Star, Plus, Trash2 } from 'lucide-react';
+import type { Designer } from '@/types';
 
 export default function DesignersPage() {
-  const { designers, projects } = useStore();
+  const { designers, projects, addDesigner, updateDesigner, deleteDesigner } = useStore();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingDesigner, setEditingDesigner] = useState<Designer | null>(null);
 
   const getDesignerProjects = (designerId: string) => {
     return projects.filter(p => p.designerId === designerId);
   };
 
+  const handleSaveDesigner = (formData: FormData) => {
+    const specialtyStr = formData.get('specialty') as string;
+    const specialty = specialtyStr.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+
+    const designerData = {
+      name: formData.get('name') as string,
+      title: formData.get('title') as string,
+      specialty,
+      phone: formData.get('phone') as string,
+      email: formData.get('email') as string,
+      rating: Number(formData.get('rating')) || 4.5,
+      bio: formData.get('bio') as string || undefined,
+    };
+
+    if (editingDesigner) {
+      updateDesigner(editingDesigner.id, designerData);
+    } else {
+      addDesigner(designerData);
+    }
+
+    setIsDialogOpen(false);
+    setEditingDesigner(null);
+  };
+
+  const openEditDialog = (designer: Designer) => {
+    setEditingDesigner(designer);
+    setIsDialogOpen(true);
+  };
+
+  const openNewDialog = () => {
+    setEditingDesigner(null);
+    setIsDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* 页面标题 */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">设计师团队</h1>
-        <p className="text-muted-foreground mt-1">管理工作室设计师信息</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">设计师团队</h1>
+          <p className="text-muted-foreground mt-1">管理工作室设计师信息</p>
+        </div>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={openNewDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              新建设计师
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingDesigner ? '编辑设计师' : '新建设计师'}
+              </DialogTitle>
+            </DialogHeader>
+            <form action={handleSaveDesigner} className="space-y-4">
+              <div>
+                <Label htmlFor="name">姓名 *</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={editingDesigner?.name}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="title">职位 *</Label>
+                <Input
+                  id="title"
+                  name="title"
+                  defaultValue={editingDesigner?.title}
+                  placeholder="如：首席设计师、高级设计师"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="specialty">擅长风格（用逗号分隔）</Label>
+                <Input
+                  id="specialty"
+                  name="specialty"
+                  defaultValue={editingDesigner?.specialty.join('，')}
+                  placeholder="如：现代简约，北欧风格，工业风"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="phone">电话 *</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    defaultValue={editingDesigner?.phone}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">邮箱 *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    defaultValue={editingDesigner?.email}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="rating">评分（1-5）</Label>
+                <Input
+                  id="rating"
+                  name="rating"
+                  type="number"
+                  min="1"
+                  max="5"
+                  step="0.1"
+                  defaultValue={editingDesigner?.rating || 4.5}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="bio">个人简介</Label>
+                <Textarea
+                  id="bio"
+                  name="bio"
+                  defaultValue={editingDesigner?.bio}
+                  rows={3}
+                  placeholder="设计师的个人介绍"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    setEditingDesigner(null);
+                  }}
+                >
+                  取消
+                </Button>
+                <Button type="submit">保存</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* 统计概览 */}
@@ -66,7 +225,9 @@ export default function DesignersPage() {
           <CardContent>
             <div className="text-3xl font-bold flex items-center gap-2">
               <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-              {(designers.reduce((sum, d) => sum + d.rating, 0) / designers.length).toFixed(1)}
+              {designers.length > 0 
+                ? (designers.reduce((sum, d) => sum + d.rating, 0) / designers.length).toFixed(1)
+                : '0.0'}
             </div>
           </CardContent>
         </Card>
@@ -173,8 +334,33 @@ export default function DesignersPage() {
                   </div>
                 )}
 
+                {/* 操作按钮 */}
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => openEditDialog(designer)}
+                  >
+                    编辑
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      if (confirm('确定要删除这位设计师吗？')) {
+                        deleteDesigner(designer.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    删除
+                  </Button>
+                </div>
+
                 {/* 入职时间 */}
-                <div className="flex items-center text-xs text-muted-foreground pt-4 border-t">
+                <div className="flex items-center text-xs text-muted-foreground pt-2">
                   <Calendar className="h-3 w-3 mr-1" />
                   入职时间：{designer.joinedAt}
                 </div>
@@ -182,6 +368,12 @@ export default function DesignersPage() {
             </Card>
           );
         })}
+
+        {designers.length === 0 && (
+          <div className="col-span-full text-center py-12 text-muted-foreground">
+            暂无设计师信息，点击"新建设计师"添加
+          </div>
+        )}
       </div>
     </div>
   );

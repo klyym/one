@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,12 +23,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { PhaseProgressDisplay } from '@/components/project/phase-progress';
-import type { Project, ProjectStatus, ProjectPriority, PhaseProgress } from '@/types';
+import { PhaseEditor } from '@/components/project/phase-editor';
+import type { Project, ProjectStatus, ProjectPriority, PhaseProgress, DesignPhase } from '@/types';
 
 // 设计阶段列表
-const DESIGN_PHASES = ['平面设计', 'SU模型推敲', '效果图', '施工图', '设计完成'] as const;
+const DESIGN_PHASES: DesignPhase[] = ['平面设计', 'SU模型推敲', '效果图', '施工图', '设计完成'];
 
 // 创建默认的阶段进度
 const createDefaultPhases = (): PhaseProgress[] => {
@@ -39,6 +41,31 @@ const createDefaultPhases = (): PhaseProgress[] => {
   }));
 };
 
+// 计算总体进度
+const calculateOverallProgress = (phases: PhaseProgress[]): number => {
+  const totalPhases = phases.length;
+  const completedPhases = phases.filter(p => p.status === 'completed').length;
+  const currentPhase = phases.find(p => p.status === 'in_progress');
+  
+  if (currentPhase) {
+    const currentPhaseIndex = phases.findIndex(p => p.phase === currentPhase.phase);
+    return Math.round(((completedPhases + currentPhase.progress / 100) / totalPhases) * 100);
+  }
+  
+  return Math.round((completedPhases / totalPhases) * 100);
+};
+
+// 获取当前阶段
+const getCurrentPhase = (phases: PhaseProgress[]): DesignPhase => {
+  const inProgressPhase = phases.find(p => p.status === 'in_progress');
+  if (inProgressPhase) return inProgressPhase.phase;
+  
+  const pendingPhase = phases.find(p => p.status === 'pending');
+  if (pendingPhase) return pendingPhase.phase;
+  
+  return '设计完成';
+};
+
 export default function ProjectsPage() {
   const { projects, clients, designers, addProject, updateProject, deleteProject } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +74,7 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [phases, setPhases] = useState<PhaseProgress[]>(createDefaultPhases());
+  const [activeTab, setActiveTab] = useState<'basic' | 'phases'>('basic');
 
   // 过滤项目
   const filteredProjects = projects.filter(project => {
@@ -69,6 +97,9 @@ export default function ProjectsPage() {
   };
 
   const handleSaveProject = (formData: FormData) => {
+    const currentPhase = getCurrentPhase(phases);
+    const overallProgress = calculateOverallProgress(phases);
+
     const projectData = {
       name: formData.get('name') as string,
       clientId: formData.get('clientId') as string,
@@ -82,31 +113,34 @@ export default function ProjectsPage() {
       location: formData.get('location') as string,
       area: Number(formData.get('area')),
       style: formData.get('style') as string,
-      phases: editingProject?.phases || phases,
-      currentPhase: editingProject?.currentPhase || '平面设计',
-      overallProgress: editingProject?.overallProgress || 0,
+      phases: phases,
+      currentPhase: currentPhase,
+      overallProgress: overallProgress,
     };
 
     if (editingProject) {
       updateProject(editingProject.id, projectData);
     } else {
       addProject(projectData);
-      setPhases(createDefaultPhases()); // 重置表单
     }
 
     setIsDialogOpen(false);
     setEditingProject(null);
+    setPhases(createDefaultPhases());
+    setActiveTab('basic');
   };
 
   const openEditDialog = (project: Project) => {
     setEditingProject(project);
     setPhases(project.phases);
+    setActiveTab('basic');
     setIsDialogOpen(true);
   };
 
   const openNewDialog = () => {
     setEditingProject(null);
     setPhases(createDefaultPhases());
+    setActiveTab('basic');
     setIsDialogOpen(true);
   };
 
@@ -152,176 +186,213 @@ export default function ProjectsPage() {
               新建项目
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>
                 {editingProject ? '编辑项目' : '新建项目'}
               </DialogTitle>
             </DialogHeader>
-            <form action={handleSaveProject} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">项目名称</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    defaultValue={editingProject?.name}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="client">客户</Label>
-                  <Select name="clientId" defaultValue={editingProject?.clientId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择客户" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(client => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            
+            {/* 标签页切换 */}
+            <div className="flex border-b">
+              <button
+                type="button"
+                onClick={() => setActiveTab('basic')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'basic'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                基本信息
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('phases')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'phases'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                阶段进度
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="designer">设计师</Label>
-                  <Select name="designerId" defaultValue={editingProject?.designerId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择设计师" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {designers.map(designer => (
-                        <SelectItem key={designer.id} value={designer.id}>
-                          {designer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="style">设计风格</Label>
-                  <Input
-                    id="style"
-                    name="style"
-                    defaultValue={editingProject?.style}
-                    required
-                  />
-                </div>
-              </div>
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <form action={handleSaveProject} className="space-y-4 py-4">
+                {activeTab === 'basic' ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="name">项目名称</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          defaultValue={editingProject?.name}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="client">客户</Label>
+                        <Select name="clientId" defaultValue={editingProject?.clientId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择客户" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.map(client => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="status">状态</Label>
-                  <Select name="status" defaultValue={editingProject?.status || 'pending'}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">待开始</SelectItem>
-                      <SelectItem value="in_progress">进行中</SelectItem>
-                      <SelectItem value="completed">已完成</SelectItem>
-                      <SelectItem value="on_hold">暂停中</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="priority">优先级</Label>
-                  <Select name="priority" defaultValue={editingProject?.priority || 'medium'}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">高</SelectItem>
-                      <SelectItem value="medium">中</SelectItem>
-                      <SelectItem value="low">低</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="designer">设计师</Label>
+                        <Select name="designerId" defaultValue={editingProject?.designerId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择设计师" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {designers.map(designer => (
+                              <SelectItem key={designer.id} value={designer.id}>
+                                {designer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="style">设计风格</Label>
+                        <Input
+                          id="style"
+                          name="style"
+                          defaultValue={editingProject?.style}
+                          required
+                        />
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="budget">预算（元）</Label>
-                  <Input
-                    id="budget"
-                    name="budget"
-                    type="number"
-                    defaultValue={editingProject?.budget}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="area">面积（㎡）</Label>
-                  <Input
-                    id="area"
-                    name="area"
-                    type="number"
-                    defaultValue={editingProject?.area}
-                    required
-                  />
-                </div>
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="status">状态</Label>
+                        <Select name="status" defaultValue={editingProject?.status || 'pending'}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">待开始</SelectItem>
+                            <SelectItem value="in_progress">进行中</SelectItem>
+                            <SelectItem value="completed">已完成</SelectItem>
+                            <SelectItem value="on_hold">暂停中</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="priority">优先级</Label>
+                        <Select name="priority" defaultValue={editingProject?.priority || 'medium'}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="high">高</SelectItem>
+                            <SelectItem value="medium">中</SelectItem>
+                            <SelectItem value="low">低</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="startDate">开始日期</Label>
-                  <Input
-                    id="startDate"
-                    name="startDate"
-                    type="date"
-                    defaultValue={editingProject?.startDate}
-                    required
-                  />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="budget">预算（元）</Label>
+                        <Input
+                          id="budget"
+                          name="budget"
+                          type="number"
+                          defaultValue={editingProject?.budget}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="area">面积（㎡）</Label>
+                        <Input
+                          id="area"
+                          name="area"
+                          type="number"
+                          defaultValue={editingProject?.area}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="startDate">开始日期</Label>
+                        <Input
+                          id="startDate"
+                          name="startDate"
+                          type="date"
+                          defaultValue={editingProject?.startDate}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="endDate">结束日期</Label>
+                        <Input
+                          id="endDate"
+                          name="endDate"
+                          type="date"
+                          defaultValue={editingProject?.endDate}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="location">项目地址</Label>
+                      <Input
+                        id="location"
+                        name="location"
+                        defaultValue={editingProject?.location}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="description">项目描述</Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        defaultValue={editingProject?.description}
+                        rows={3}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <PhaseEditor phases={phases} onChange={setPhases} />
+                )}
+
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      setEditingProject(null);
+                      setPhases(createDefaultPhases());
+                      setActiveTab('basic');
+                    }}
+                  >
+                    取消
+                  </Button>
+                  <Button type="submit">保存</Button>
                 </div>
-                <div>
-                  <Label htmlFor="endDate">结束日期</Label>
-                  <Input
-                    id="endDate"
-                    name="endDate"
-                    type="date"
-                    defaultValue={editingProject?.endDate}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="location">项目地址</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  defaultValue={editingProject?.location}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description">项目描述</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  defaultValue={editingProject?.description}
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    setEditingProject(null);
-                  }}
-                >
-                  取消
-                </Button>
-                <Button type="submit">保存</Button>
-              </div>
-            </form>
+              </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
