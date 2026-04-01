@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { StoreProvider } from '@/lib/store';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { StudioProvider } from '@/lib/studio';
 import { AuthGuard } from '@/components/auth/auth-guard';
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
@@ -30,9 +31,11 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <StoreProvider>
-        <MainLayoutContent>{children}</MainLayoutContent>
-      </StoreProvider>
+      <StudioProvider>
+        <StoreProvider>
+          <MainLayoutContent>{children}</MainLayoutContent>
+        </StoreProvider>
+      </StudioProvider>
     </AuthProvider>
   );
 }

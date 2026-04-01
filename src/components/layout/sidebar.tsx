@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
+import { useStudio } from '@/lib/studio';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -38,6 +39,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { studioInfo } = useStudio();
 
   const handleLogout = () => {
     logout();
@@ -60,7 +62,7 @@ export function Sidebar() {
         </div>
         <div className="flex flex-col">
           <span className="text-base font-semibold text-foreground">
-            室内设计工作室
+            {studioInfo.name}
           </span>
           <span className="text-xs text-muted-foreground">管理系统</span>
         </div>

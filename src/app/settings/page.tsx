@@ -6,12 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Bell, Shield, Palette, CheckCircle, AlertCircle, Eye, EyeOff, Key, User, Mail, Save, RefreshCw } from 'lucide-react';
+import { Settings, Bell, Shield, Palette, CheckCircle, AlertCircle, Eye, EyeOff, Key, User, Mail, Save, RefreshCw, Building2, Phone, MapPin } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { useStudio } from '@/lib/studio';
 import { Separator } from '@/components/ui/separator';
 
 export default function SettingsPage() {
   const { user, changePassword, updateProfile } = useAuth();
+  const { studioInfo, updateStudioInfo } = useStudio();
   
   // 用户信息修改状态
   const [editName, setEditName] = useState('');
@@ -30,6 +32,15 @@ export default function SettingsPage() {
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [passwordResult, setPasswordResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // 工作室信息修改状态
+  const [editStudioName, setEditStudioName] = useState('');
+  const [editStudioAddress, setEditStudioAddress] = useState('');
+  const [editStudioPhone, setEditStudioPhone] = useState('');
+  const [editStudioEmail, setEditStudioEmail] = useState('');
+  const [isStudioSubmitting, setIsStudioSubmitting] = useState(false);
+  const [studioResult, setStudioResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [hasStudioChanges, setHasStudioChanges] = useState(false);
+
   // 初始化用户信息
   useEffect(() => {
     if (user) {
@@ -38,12 +49,30 @@ export default function SettingsPage() {
     }
   }, [user]);
 
+  // 初始化工作室信息
+  useEffect(() => {
+    setEditStudioName(studioInfo.name);
+    setEditStudioAddress(studioInfo.address);
+    setEditStudioPhone(studioInfo.phone);
+    setEditStudioEmail(studioInfo.email);
+  }, [studioInfo]);
+
   // 检测用户信息变更
   useEffect(() => {
     if (user) {
       setHasProfileChanges(editName !== user.name || editEmail !== user.email);
     }
   }, [editName, editEmail, user]);
+
+  // 检测工作室信息变更
+  useEffect(() => {
+    setHasStudioChanges(
+      editStudioName !== studioInfo.name ||
+      editStudioAddress !== studioInfo.address ||
+      editStudioPhone !== studioInfo.phone ||
+      editStudioEmail !== studioInfo.email
+    );
+  }, [editStudioName, editStudioAddress, editStudioPhone, editStudioEmail, studioInfo]);
 
   // 密码强度检测
   const getPasswordStrength = (password: string): { level: string; color: string; percentage: number } => {
@@ -157,6 +186,45 @@ export default function SettingsPage() {
     setNewPassword('');
     setConfirmPassword('');
     setPasswordResult(null);
+  };
+
+  // 处理工作室信息修改
+  const handleStudioSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStudioResult(null);
+
+    if (!editStudioName.trim()) {
+      setStudioResult({ type: 'error', message: '工作室名称不能为空' });
+      return;
+    }
+
+    setIsStudioSubmitting(true);
+
+    try {
+      // 模拟延迟
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      updateStudioInfo({
+        name: editStudioName.trim(),
+        address: editStudioAddress.trim(),
+        phone: editStudioPhone.trim(),
+        email: editStudioEmail.trim(),
+      });
+
+      setStudioResult({ type: 'success', message: '工作室信息保存成功' });
+    } catch {
+      setStudioResult({ type: 'error', message: '保存失败，请稍后重试' });
+    } finally {
+      setIsStudioSubmitting(false);
+    }
+  };
+
+  const handleResetStudio = () => {
+    setEditStudioName(studioInfo.name);
+    setEditStudioAddress(studioInfo.address);
+    setEditStudioPhone(studioInfo.phone);
+    setEditStudioEmail(studioInfo.email);
+    setStudioResult(null);
   };
 
   return (
@@ -485,33 +553,145 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+            <Building2 className="h-5 w-5" />
             基本信息
           </CardTitle>
-          <CardDescription>工作室基本信息设置</CardDescription>
+          <CardDescription>工作室基本信息设置，修改后将同步更新系统显示</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4">
-            <div>
-              <Label htmlFor="studio-name">工作室名称</Label>
-              <Input id="studio-name" defaultValue="室内设计工作室" className="mt-1.5" />
-            </div>
-            <div>
-              <Label htmlFor="studio-address">工作室地址</Label>
-              <Input id="studio-address" placeholder="请输入工作室地址" className="mt-1.5" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="contact-phone">联系电话</Label>
-                <Input id="contact-phone" placeholder="请输入联系电话" className="mt-1.5" />
+        <CardContent>
+          <form onSubmit={handleStudioSubmit} className="space-y-6">
+            {/* 保存结果提示 */}
+            {studioResult && (
+              <div
+                className={`flex items-center gap-2 p-3 rounded-lg ${
+                  studioResult.type === 'success'
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}
+              >
+                {studioResult.type === 'success' ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                {studioResult.message}
               </div>
+            )}
+
+            <div className="grid gap-6">
+              {/* 工作室名称 */}
               <div>
-                <Label htmlFor="contact-email">联系邮箱</Label>
-                <Input id="contact-email" type="email" placeholder="请输入联系邮箱" className="mt-1.5" />
+                <Label htmlFor="studio-name" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  工作室名称
+                </Label>
+                <Input
+                  id="studio-name"
+                  value={editStudioName}
+                  onChange={(e) => {
+                    setEditStudioName(e.target.value);
+                    setStudioResult(null);
+                  }}
+                  placeholder="请输入工作室名称"
+                  className="mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  此名称将显示在系统左上角
+                </p>
               </div>
+
+              {/* 工作室地址 */}
+              <div>
+                <Label htmlFor="studio-address" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  工作室地址
+                </Label>
+                <Input
+                  id="studio-address"
+                  value={editStudioAddress}
+                  onChange={(e) => {
+                    setEditStudioAddress(e.target.value);
+                    setStudioResult(null);
+                  }}
+                  placeholder="请输入工作室地址"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* 联系电话 */}
+                <div>
+                  <Label htmlFor="contact-phone" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    联系电话
+                  </Label>
+                  <Input
+                    id="contact-phone"
+                    value={editStudioPhone}
+                    onChange={(e) => {
+                      setEditStudioPhone(e.target.value);
+                      setStudioResult(null);
+                    }}
+                    placeholder="请输入联系电话"
+                    className="mt-1.5"
+                  />
+                </div>
+                {/* 联系邮箱 */}
+                <div>
+                  <Label htmlFor="contact-email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    联系邮箱
+                  </Label>
+                  <Input
+                    id="contact-email"
+                    type="email"
+                    value={editStudioEmail}
+                    onChange={(e) => {
+                      setEditStudioEmail(e.target.value);
+                      setStudioResult(null);
+                    }}
+                    placeholder="请输入联系邮箱"
+                    className="mt-1.5"
+                  />
+                </div>
+              </div>
+
+              {/* 提示信息 */}
+              {hasStudioChanges && (
+                <div className="p-3 bg-blue-50 text-blue-700 rounded-lg text-sm border border-blue-200">
+                  <p className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    您有未保存的更改
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
-          <Button>保存更改</Button>
+
+            {/* 操作按钮 */}
+            <div className="flex gap-3">
+              <Button type="submit" disabled={isStudioSubmitting || !hasStudioChanges}>
+                {isStudioSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
+                    保存中...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    保存更改
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetStudio}
+                disabled={!hasStudioChanges}
+              >
+                重置
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 
