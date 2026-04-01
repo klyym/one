@@ -1,0 +1,388 @@
+'use client';
+
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import type { Project, Client, Designer, DesignCase } from '@/types';
+
+// 初始数据
+const initialClients: Client[] = [
+  {
+    id: '1',
+    name: '张伟',
+    phone: '138-0000-0001',
+    email: 'zhangwei@example.com',
+    address: '北京市朝阳区望京街道',
+    company: '科技发展有限公司',
+    totalProjects: 3,
+    totalSpent: 850000,
+    createdAt: '2024-01-15',
+    lastContactAt: '2024-12-10',
+  },
+  {
+    id: '2',
+    name: '李娜',
+    phone: '139-0000-0002',
+    email: 'lina@example.com',
+    address: '上海市浦东新区陆家嘴',
+    totalProjects: 2,
+    totalSpent: 620000,
+    createdAt: '2024-03-20',
+    lastContactAt: '2024-12-08',
+  },
+  {
+    id: '3',
+    name: '王强',
+    phone: '137-0000-0003',
+    email: 'wangqiang@example.com',
+    address: '深圳市南山区科技园',
+    company: '创新科技有限公司',
+    totalProjects: 5,
+    totalSpent: 1200000,
+    createdAt: '2024-02-10',
+    lastContactAt: '2024-12-12',
+  },
+];
+
+const initialDesigners: Designer[] = [
+  {
+    id: '1',
+    name: '陈设计师',
+    title: '首席设计师',
+    specialty: ['现代简约', '北欧风格', '工业风'],
+    phone: '136-0000-0001',
+    email: 'chen@studio.com',
+    activeProjects: 4,
+    completedProjects: 28,
+    rating: 4.9,
+    bio: '15年室内设计经验，擅长现代简约风格',
+    joinedAt: '2018-03-15',
+  },
+  {
+    id: '2',
+    name: '林设计师',
+    title: '高级设计师',
+    specialty: ['中式风格', '新古典', '轻奢'],
+    phone: '136-0000-0002',
+    email: 'lin@studio.com',
+    activeProjects: 3,
+    completedProjects: 22,
+    rating: 4.8,
+    bio: '专注中式风格与现代融合',
+    joinedAt: '2019-06-20',
+  },
+  {
+    id: '3',
+    name: '赵设计师',
+    title: '设计师',
+    specialty: ['现代简约', '日式风格', '极简主义'],
+    phone: '136-0000-0003',
+    email: 'zhao@studio.com',
+    activeProjects: 2,
+    completedProjects: 15,
+    rating: 4.7,
+    bio: '热爱极简设计美学',
+    joinedAt: '2020-09-10',
+  },
+];
+
+const initialProjects: Project[] = [
+  {
+    id: '1',
+    name: '望京SOHO办公空间',
+    clientId: '1',
+    designerId: '1',
+    status: 'in_progress',
+    priority: 'high',
+    budget: 450000,
+    startDate: '2024-10-15',
+    description: '现代简约风格办公空间设计，面积800平米',
+    location: '北京市朝阳区望京SOHO',
+    area: 800,
+    style: '现代简约',
+    progress: 65,
+    createdAt: '2024-10-01',
+    updatedAt: '2024-12-10',
+  },
+  {
+    id: '2',
+    name: '陆家嘴高端住宅',
+    clientId: '2',
+    designerId: '2',
+    status: 'in_progress',
+    priority: 'high',
+    budget: 380000,
+    startDate: '2024-11-01',
+    description: '轻奢风格私人住宅设计，包含客厅、卧室、书房',
+    location: '上海市浦东新区陆家嘴',
+    area: 320,
+    style: '轻奢',
+    progress: 35,
+    createdAt: '2024-10-20',
+    updatedAt: '2024-12-08',
+  },
+  {
+    id: '3',
+    name: '科技园办公楼',
+    clientId: '3',
+    designerId: '1',
+    status: 'completed',
+    priority: 'medium',
+    budget: 520000,
+    startDate: '2024-06-01',
+    endDate: '2024-10-30',
+    description: '开放式办公空间，包含会议室、休息区、茶水间',
+    location: '深圳市南山区科技园',
+    area: 1200,
+    style: '工业风',
+    progress: 100,
+    createdAt: '2024-05-15',
+    updatedAt: '2024-10-30',
+  },
+  {
+    id: '4',
+    name: '别墅改造项目',
+    clientId: '1',
+    designerId: '3',
+    status: 'pending',
+    priority: 'medium',
+    budget: 280000,
+    startDate: '2025-01-15',
+    description: '三层别墅全屋改造，新中式风格',
+    location: '北京市顺义区中央别墅区',
+    area: 450,
+    style: '新中式',
+    progress: 0,
+    createdAt: '2024-12-05',
+    updatedAt: '2024-12-05',
+  },
+  {
+    id: '5',
+    name: '创意工作室',
+    clientId: '3',
+    designerId: '2',
+    status: 'in_progress',
+    priority: 'low',
+    budget: 180000,
+    startDate: '2024-11-20',
+    description: '创意工作室空间设计，强调灵活性和功能性',
+    location: '深圳市南山区',
+    area: 280,
+    style: '现代简约',
+    progress: 20,
+    createdAt: '2024-11-15',
+    updatedAt: '2024-12-12',
+  },
+];
+
+const initialCases: DesignCase[] = [
+  {
+    id: '1',
+    name: '望京SOHO现代办公空间',
+    projectId: '3',
+    designerId: '1',
+    style: '工业风',
+    location: '深圳市南山区科技园',
+    area: 1200,
+    images: [
+      'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800',
+      'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800',
+    ],
+    description: '开放式办公空间设计，融合工业风元素与现代美学',
+    tags: ['办公空间', '工业风', '开放办公'],
+    featured: true,
+    views: 1234,
+    likes: 89,
+    createdAt: '2024-11-01',
+  },
+  {
+    id: '2',
+    name: '新中式住宅',
+    projectId: '4',
+    designerId: '2',
+    style: '新中式',
+    location: '北京市朝阳区',
+    area: 380,
+    images: [
+      'https://images.unsplash.com/photo-1600210492493-0946911123ea?w=800',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+    ],
+    description: '传统中式元素与现代生活方式的完美融合',
+    tags: ['住宅', '新中式', '别墅'],
+    featured: true,
+    views: 2341,
+    likes: 156,
+    createdAt: '2024-10-15',
+  },
+  {
+    id: '3',
+    name: '极简主义公寓',
+    projectId: '2',
+    designerId: '3',
+    style: '极简主义',
+    location: '上海市浦东新区',
+    area: 150,
+    images: [
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+    ],
+    description: '简约而不简单的空间设计，追求极致的美学体验',
+    tags: ['公寓', '极简主义', '小户型'],
+    featured: false,
+    views: 876,
+    likes: 45,
+    createdAt: '2024-09-20',
+  },
+];
+
+// Context 类型定义
+interface StoreContextType {
+  projects: Project[];
+  clients: Client[];
+  designers: Designer[];
+  cases: DesignCase[];
+  
+  // 项目操作
+  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateProject: (id: string, updates: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+  
+  // 客户操作
+  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'totalProjects' | 'totalSpent'>) => void;
+  updateClient: (id: string, updates: Partial<Client>) => void;
+  deleteClient: (id: string) => void;
+  
+  // 设计师操作
+  addDesigner: (designer: Omit<Designer, 'id' | 'joinedAt' | 'activeProjects' | 'completedProjects'>) => void;
+  updateDesigner: (id: string, updates: Partial<Designer>) => void;
+  
+  // 案例操作
+  addCase: (caseItem: Omit<DesignCase, 'id' | 'createdAt' | 'views' | 'likes'>) => void;
+  updateCase: (id: string, updates: Partial<DesignCase>) => void;
+  deleteCase: (id: string) => void;
+}
+
+const StoreContext = createContext<StoreContextType | undefined>(undefined);
+
+export function StoreProvider({ children }: { children: ReactNode }) {
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [designers, setDesigners] = useState<Designer[]>(initialDesigners);
+  const [cases, setCases] = useState<DesignCase[]>(initialCases);
+
+  // 项目操作
+  const addProject = (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newProject: Project = {
+      ...project,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
+    };
+    setProjects(prev => [...prev, newProject]);
+  };
+
+  const updateProject = (id: string, updates: Partial<Project>) => {
+    setProjects(prev =>
+      prev.map(p =>
+        p.id === id
+          ? { ...p, ...updates, updatedAt: new Date().toISOString().split('T')[0] }
+          : p
+      )
+    );
+  };
+
+  const deleteProject = (id: string) => {
+    setProjects(prev => prev.filter(p => p.id !== id));
+  };
+
+  // 客户操作
+  const addClient = (client: Omit<Client, 'id' | 'createdAt' | 'totalProjects' | 'totalSpent'>) => {
+    const newClient: Client = {
+      ...client,
+      id: Date.now().toString(),
+      totalProjects: 0,
+      totalSpent: 0,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setClients(prev => [...prev, newClient]);
+  };
+
+  const updateClient = (id: string, updates: Partial<Client>) => {
+    setClients(prev =>
+      prev.map(c => (c.id === id ? { ...c, ...updates } : c))
+    );
+  };
+
+  const deleteClient = (id: string) => {
+    setClients(prev => prev.filter(c => c.id !== id));
+  };
+
+  // 设计师操作
+  const addDesigner = (designer: Omit<Designer, 'id' | 'joinedAt' | 'activeProjects' | 'completedProjects'>) => {
+    const newDesigner: Designer = {
+      ...designer,
+      id: Date.now().toString(),
+      activeProjects: 0,
+      completedProjects: 0,
+      joinedAt: new Date().toISOString().split('T')[0],
+    };
+    setDesigners(prev => [...prev, newDesigner]);
+  };
+
+  const updateDesigner = (id: string, updates: Partial<Designer>) => {
+    setDesigners(prev =>
+      prev.map(d => (d.id === id ? { ...d, ...updates } : d))
+    );
+  };
+
+  // 案例操作
+  const addCase = (caseItem: Omit<DesignCase, 'id' | 'createdAt' | 'views' | 'likes'>) => {
+    const newCase: DesignCase = {
+      ...caseItem,
+      id: Date.now().toString(),
+      views: 0,
+      likes: 0,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setCases(prev => [...prev, newCase]);
+  };
+
+  const updateCase = (id: string, updates: Partial<DesignCase>) => {
+    setCases(prev =>
+      prev.map(c => (c.id === id ? { ...c, ...updates } : c))
+    );
+  };
+
+  const deleteCase = (id: string) => {
+    setCases(prev => prev.filter(c => c.id !== id));
+  };
+
+  return (
+    <StoreContext.Provider
+      value={{
+        projects,
+        clients,
+        designers,
+        cases,
+        addProject,
+        updateProject,
+        deleteProject,
+        addClient,
+        updateClient,
+        deleteClient,
+        addDesigner,
+        updateDesigner,
+        addCase,
+        updateCase,
+        deleteCase,
+      }}
+    >
+      {children}
+    </StoreContext.Provider>
+  );
+}
+
+export function useStore() {
+  const context = useContext(StoreContext);
+  if (context === undefined) {
+    throw new Error('useStore must be used within a StoreProvider');
+  }
+  return context;
+}
