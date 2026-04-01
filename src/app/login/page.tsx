@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useStudio } from '@/lib/studio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { studioInfo } = useStudio();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,7 +50,7 @@ export default function LoginPage() {
           </div>
           
           <div>
-            <CardTitle className="text-2xl">室内设计工作室</CardTitle>
+            <CardTitle className="text-2xl">{studioInfo.name}</CardTitle>
             <CardDescription className="mt-2">
               管理系统登录
             </CardDescription>
