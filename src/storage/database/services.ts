@@ -91,7 +91,7 @@ export const userService = {
     return data;
   },
 
-  async update(id: string, updates: { name?: string; role?: string; is_active?: boolean }) {
+  async update(id: string, updates: { name?: string; role?: string; is_active?: boolean; email?: string; password_hash?: string }) {
     const { data, error } = await client
       .from('users')
       .update({ ...updates, updated_at: new Date().toISOString() })

@@ -13,19 +13,38 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
   updateProfile: (name: string, email: string) => Promise<{ success: boolean; message: string }>;
   isLoading: boolean;
+  error: string | null;
 }
 
-// 模拟用户数据（包含密码，实际项目应存储在数据库中）
+// 本地存储键
 const USER_STORAGE_KEY = 'studio_user';
 const PASSWORDS_STORAGE_KEY = 'studio_passwords';
 const USER_PROFILES_KEY = 'studio_user_profiles';
 
-// 初始化默认用户密码
+// 默认用户配置（用于数据库初始化前的降级）
+const DEMO_USERS = [
+  {
+    id: '1',
+    name: '管理员',
+    email: 'admin@studio.com',
+    avatar: '',
+    role: '管理员',
+  },
+  {
+    id: '2',
+    name: '陈设计师',
+    email: 'chen@studio.com',
+    avatar: '',
+    role: '首席设计师',
+  },
+];
+
+// 本地密码管理（降级方案）
 const initDefaultPasswords = () => {
   const stored = localStorage.getItem(PASSWORDS_STORAGE_KEY);
   if (!stored) {
@@ -50,7 +69,7 @@ const savePasswords = (passwords: Record<string, string>) => {
   localStorage.setItem(PASSWORDS_STORAGE_KEY, JSON.stringify(passwords));
 };
 
-// 用户配置管理（存储自定义用户名和邮箱）
+// 本地用户配置管理
 interface UserProfile {
   name: string;
   email: string;
@@ -69,32 +88,13 @@ const saveUserProfiles = (profiles: Record<string, UserProfile>) => {
   localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(profiles));
 };
 
-// 用户基本信息
-const DEMO_USERS = [
-  {
-    id: '1',
-    name: '管理员',
-    email: 'admin@studio.com',
-    avatar: '',
-    role: '管理员',
-  },
-  {
-    id: '2',
-    name: '陈设计师',
-    email: 'chen@studio.com',
-    avatar: '',
-    role: '首席设计师',
-  },
-];
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 根据邮箱获取用户信息（优先使用自定义配置）
-const getUserByEmail = (email: string, profiles: Record<string, UserProfile>) => {
-  // 先检查是否有自定义配置
+// 根据邮箱获取用户信息（支持自定义配置）
+const getUserByEmail = (email: string, profiles: Record<string, UserProfile>, dbUsers?: User[]) => {
+  // 先检查本地自定义配置
   const customProfile = profiles[email];
   if (customProfile) {
-    // 查找原始用户ID和角色
     const originalUser = DEMO_USERS.find(u => u.email === email);
     if (originalUser) {
       return {
@@ -107,6 +107,20 @@ const getUserByEmail = (email: string, profiles: Record<string, UserProfile>) =>
     }
   }
   
+  // 检查数据库用户
+  if (dbUsers) {
+    const dbUser = dbUsers.find(u => u.email === email);
+    if (dbUser) {
+      return {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        avatar: dbUser.avatar,
+        role: dbUser.role,
+      };
+    }
+  }
+  
   // 使用默认配置
   return DEMO_USERS.find(u => u.email === email);
 };
@@ -114,72 +128,119 @@ const getUserByEmail = (email: string, profiles: Record<string, UserProfile>) =>
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 初始化时检查本地存储
+  // 初始化时从 localStorage 和数据库读取
   useEffect(() => {
-    // 初始化默认密码
-    initDefaultPasswords();
-
-    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-    if (storedUser) {
+    async function initAuth() {
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem(USER_STORAGE_KEY);
+        // 1. 初始化本地降级数据
+        initDefaultPasswords();
+
+        // 2. 从 localStorage 读取
+        const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch {
+            localStorage.removeItem(USER_STORAGE_KEY);
+          }
+        }
+
+        // 3. 尝试初始化数据库（如果可用）
+        try {
+          const { initAppDatabase } = await import('@/storage/database/init');
+          await initAppDatabase();
+        } catch (dbError) {
+          console.log('数据库初始化失败，使用本地存储:', dbError);
+        }
+      } finally {
+        setIsLoading(false);
       }
     }
-    setIsLoading(false);
+
+    initAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
     // 模拟登录延迟
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // 获取存储的密码和用户配置
-    const passwords = getPasswords();
-    const profiles = getUserProfiles();
+    try {
+      // 1. 先尝试数据库登录
+      try {
+        const { userService } = await import('@/storage/database/services');
+        const dbUser = await userService.getByEmail(email);
+        
+        if (dbUser) {
+          // 数据库用户登录（密码哈希验证需要在实际项目中使用 bcrypt）
+          const isValidPassword = password === dbUser.password_hash; // 临时方案，实际应使用 bcrypt
+          
+          if (isValidPassword) {
+            const userData: User = {
+              id: dbUser.id,
+              name: dbUser.name,
+              email: dbUser.email,
+              avatar: dbUser.avatar,
+              role: dbUser.role,
+            };
+            setUser(userData);
+            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+            setError(null);
+            return { success: true, message: '登录成功' };
+          }
+        }
+      } catch (dbError) {
+        // 数据库不可用，继续使用本地登录
+        console.log('数据库登录失败，尝试本地登录:', dbError);
+      }
 
-    // 查找用户（支持自定义邮箱）
-    let foundUser = getUserByEmail(email, profiles);
-    
-    // 如果没找到，检查是否有用户修改了邮箱
-    if (!foundUser) {
-      for (const [originalEmail, profile] of Object.entries(profiles)) {
-        if (profile.email === email) {
-          foundUser = getUserByEmail(originalEmail, profiles);
-          break;
+      // 2. 降级到本地登录
+      const passwords = getPasswords();
+      const profiles = getUserProfiles();
+      
+      let foundUser = getUserByEmail(email, profiles);
+
+      if (!foundUser) {
+        // 检查是否有用户修改了邮箱
+        for (const [originalEmail, profile] of Object.entries(profiles)) {
+          if (profile.email === email) {
+            foundUser = getUserByEmail(originalEmail, profiles);
+            break;
+          }
         }
       }
+
+      if (!foundUser) {
+        setError('邮箱或密码错误');
+        return { success: false, message: '邮箱或密码错误' };
+      }
+
+      const originalEmail = DEMO_USERS.find(u => u.id === foundUser!.id)?.email || email;
+      const storedPassword = passwords[originalEmail];
+      const validPassword = storedPassword || (originalEmail === 'admin@studio.com' ? 'admin123' : '123456');
+
+      if (password !== validPassword) {
+        setError('邮箱或密码错误');
+        return { success: false, message: '邮箱或密码错误' };
+      }
+
+      setUser(foundUser);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(foundUser));
+      setError(null);
+      return { success: true, message: '登录成功' };
+
+    } catch (err) {
+      const errorMessage = '登录失败，请稍后重试';
+      setError(errorMessage);
+      return { success: false, message: errorMessage };
     }
-
-    if (!foundUser) {
-      return false;
-    }
-
-    // 获取密码（使用原始邮箱查找）
-    const originalEmail = DEMO_USERS.find(u => u.id === foundUser!.id)?.email || email;
-    const storedPassword = passwords[originalEmail];
-    const validPassword = storedPassword || (originalEmail === 'admin@studio.com' ? 'admin123' : '123456');
-
-    if (password !== validPassword) {
-      return false;
-    }
-
-    const userData: User = {
-      id: foundUser.id,
-      name: foundUser.name,
-      email: foundUser.email,
-      avatar: foundUser.avatar,
-      role: foundUser.role,
-    };
-    setUser(userData);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-    return true;
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     localStorage.removeItem(USER_STORAGE_KEY);
+    setError(null);
   };
 
   const changePassword = async (
@@ -193,20 +254,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: '用户未登录' };
     }
 
-    // 获取原始邮箱
-    const originalEmail = DEMO_USERS.find(u => u.id === user.id)?.email || user.email;
+    // 尝试数据库修改
+    try {
+      const { userService } = await import('@/storage/database/services');
+      const dbUser = await userService.getById(user.id);
+      
+      if (dbUser) {
+        const isValidPassword = currentPassword === dbUser.password_hash;
+        
+        if (!isValidPassword) {
+          return { success: false, message: '当前密码错误' };
+        }
 
-    // 获取当前用户的密码
+        if (newPassword.length < 6) {
+          return { success: false, message: '新密码长度不能少于6位' };
+        }
+
+        if (currentPassword === newPassword) {
+          return { success: false, message: '新密码不能与当前密码相同' };
+        }
+
+        // 更新数据库密码（实际应使用 bcrypt hash）
+        await userService.update(user.id, { password_hash: newPassword });
+        setError(null);
+        return { success: true, message: '密码修改成功' };
+      }
+    } catch (dbError) {
+      console.log('数据库修改失败，使用本地存储:', dbError);
+    }
+
+    // 降级到本地存储
     const passwords = getPasswords();
+    const originalEmail = DEMO_USERS.find(u => u.id === user.id)?.email || user.email;
     const storedPassword = passwords[originalEmail] || 
       (originalEmail === 'admin@studio.com' ? 'admin123' : '123456');
 
-    // 验证当前密码
     if (currentPassword !== storedPassword) {
       return { success: false, message: '当前密码错误' };
     }
 
-    // 验证新密码
     if (newPassword.length < 6) {
       return { success: false, message: '新密码长度不能少于6位' };
     }
@@ -215,10 +301,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: '新密码不能与当前密码相同' };
     }
 
-    // 更新密码
     passwords[originalEmail] = newPassword;
     savePasswords(passwords);
-
+    setError(null);
     return { success: true, message: '密码修改成功' };
   };
 
@@ -233,53 +318,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: '用户未登录' };
     }
 
-    // 验证用户名
+    // 验证
     if (!newName.trim()) {
       return { success: false, message: '用户名不能为空' };
     }
 
-    // 验证邮箱格式
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
       return { success: false, message: '请输入有效的邮箱地址' };
     }
 
-    // 获取原始邮箱
+    // 尝试数据库更新
+    try {
+      const { userService } = await import('@/storage/database/services');
+      
+      // 检查邮箱是否已被使用
+      const existingUser = await userService.getByEmail(newEmail);
+      if (existingUser && existingUser.id !== user.id) {
+        return { success: false, message: '该邮箱已被其他用户使用' };
+      }
+
+      await userService.update(user.id, { name: newName.trim(), email: newEmail });
+      
+      const updatedUser: User = { ...user, name: newName.trim(), email: newEmail };
+      setUser(updatedUser);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+      setError(null);
+      return { success: true, message: '个人信息修改成功' };
+    } catch (dbError) {
+      console.log('数据库更新失败，使用本地存储:', dbError);
+    }
+
+    // 降级到本地存储
+    const profiles = getUserProfiles();
     const originalEmail = DEMO_USERS.find(u => u.id === user.id)?.email || user.email;
 
-    // 检查邮箱是否已被其他用户使用
-    const profiles = getUserProfiles();
     for (const [profileOriginalEmail, profile] of Object.entries(profiles)) {
       if (profileOriginalEmail !== originalEmail && profile.email === newEmail) {
         return { success: false, message: '该邮箱已被其他用户使用' };
       }
     }
 
-    // 检查默认用户邮箱冲突
     const otherDefaultUsers = DEMO_USERS.filter(u => u.email !== originalEmail);
     if (otherDefaultUsers.some(u => u.email === newEmail)) {
-      // 检查这个默认用户是否已被修改过邮箱
       if (!profiles[otherDefaultUsers.find(u => u.email === newEmail)!.email]) {
         return { success: false, message: '该邮箱已被其他用户使用' };
       }
     }
 
-    // 更新用户配置
     profiles[originalEmail] = {
       name: newName.trim(),
       email: newEmail,
     };
     saveUserProfiles(profiles);
 
-    // 更新当前用户状态
-    const updatedUser: User = {
-      ...user,
-      name: newName.trim(),
-      email: newEmail,
-    };
+    const updatedUser: User = { ...user, name: newName.trim(), email: newEmail };
     setUser(updatedUser);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
-
+    setError(null);
     return { success: true, message: '个人信息修改成功' };
   };
 
@@ -293,6 +389,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         changePassword,
         updateProfile,
         isLoading,
+        error,
       }}
     >
       {children}

@@ -1,128 +1,74 @@
+/**
+ * Supabase 客户端
+ * 支持服务端和客户端环境
+ */
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { execSync } from 'child_process';
+
+// 环境变量
+const supabaseUrl = process.env.COZE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.COZE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceRoleKey = process.env.COZE_SUPABASE_SERVICE_ROLE_KEY || '';
 
 let envLoaded = false;
 
-interface SupabaseCredentials {
-  url: string;
-  anonKey: string;
-}
-
-function loadEnv(): void {
-  if (envLoaded || (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY)) {
+/**
+ * 加载环境变量（仅服务端）
+ */
+function loadEnvVariables() {
+  if (envLoaded || typeof window !== 'undefined') {
     return;
   }
 
   try {
-    try {
-      require('dotenv').config();
-      if (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY) {
-        envLoaded = true;
-        return;
-      }
-    } catch {
-      // dotenv not available
+    if (typeof process !== 'undefined' && process.env) {
+      // 服务端环境变量已通过 process.env 自动注入
+      envLoaded = true;
     }
-
-    const pythonCode = `
-import os
-import sys
-try:
-    from coze_workload_identity import Client
-    client = Client()
-    env_vars = client.get_project_env_vars()
-    client.close()
-    for env_var in env_vars:
-        print(f"{env_var.key}={env_var.value}")
-except Exception as e:
-    print(f"# Error: {e}", file=sys.stderr)
-`;
-
-    const output = execSync(`python3 -c '${pythonCode.replace(/'/g, "'\"'\"'")}'`, {
-      encoding: 'utf-8',
-      timeout: 10000,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    const lines = output.trim().split('\n');
-    for (const line of lines) {
-      if (line.startsWith('#')) continue;
-      const eqIndex = line.indexOf('=');
-      if (eqIndex > 0) {
-        const key = line.substring(0, eqIndex);
-        let value = line.substring(eqIndex + 1);
-        if ((value.startsWith("'") && value.endsWith("'")) ||
-            (value.startsWith('"') && value.endsWith('"'))) {
-          value = value.slice(1, -1);
-        }
-        if (!process.env[key]) {
-          process.env[key] = value;
-        }
-      }
-    }
-
-    envLoaded = true;
-  } catch {
-    // Silently fail
+  } catch (error) {
+    console.warn('加载环境变量失败:', error);
   }
 }
 
-function getSupabaseCredentials(): SupabaseCredentials {
-  loadEnv();
+let clientInstance: SupabaseClient | null = null;
 
-  const url = process.env.COZE_SUPABASE_URL;
-  const anonKey = process.env.COZE_SUPABASE_ANON_KEY;
-
-  if (!url) {
-    throw new Error('COZE_SUPABASE_URL is not set');
-  }
-  if (!anonKey) {
-    throw new Error('COZE_SUPABASE_ANON_KEY is not set');
-  }
-
-  return { url, anonKey };
-}
-
-function getSupabaseServiceRoleKey(): string | undefined {
-  loadEnv();
-  return process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
-}
-
-function getSupabaseClient(token?: string): SupabaseClient {
-  const { url, anonKey } = getSupabaseCredentials();
-
-  let key: string;
-  if (token) {
-    key = anonKey;
-  } else {
-    const serviceRoleKey = getSupabaseServiceRoleKey();
-    key = serviceRoleKey ?? anonKey;
+/**
+ * 获取 Supabase 客户端实例
+ * 
+ * @param token - 可选的用户认证 token
+ * @returns Supabase 客户端实例
+ */
+export function getSupabaseClient(token?: string): SupabaseClient {
+  if (clientInstance) {
+    return clientInstance;
   }
 
-  if (token) {
-    return createClient(url, key, {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-      db: {
-        timeout: 60000,
-      },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+  // 服务端加载环境变量
+  if (typeof window === 'undefined') {
+    loadEnvVariables();
   }
 
-  return createClient(url, key, {
-    db: {
-      timeout: 60000,
-    },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+  // 验证必要的环境变量
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Supabase 环境变量未配置。请在 Coze 平台开通 Supabase 服务，或设置 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY 环境变量。'
+    );
+  }
+
+  // 选择合适的密钥
+  const key = token ? supabaseAnonKey : (supabaseServiceRoleKey || supabaseAnonKey);
+
+  // 创建客户端实例
+  clientInstance = createClient(supabaseUrl, key, {
+    auth: token ? { persistSession: false } : undefined,
   });
+
+  return clientInstance;
 }
 
-export { loadEnv, getSupabaseCredentials, getSupabaseServiceRoleKey, getSupabaseClient };
+/**
+ * 重置客户端实例（用于测试或环境切换）
+ */
+export function resetSupabaseClient() {
+  clientInstance = null;
+}
