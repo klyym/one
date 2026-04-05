@@ -12,7 +12,9 @@
     "deploy": "bash ./scripts/deploy-to-vercel.sh",
     "deploy:prod": "vercel --prod",
     "deploy:preview": "vercel",
-    "check:deploy": "bash ./scripts/check-deploy-ready.sh"
+    "check:deploy": "bash ./scripts/check-deploy-ready.sh",
+    "setup:github": "bash ./scripts/setup-github-remote.sh",
+    "push:github": "bash ./scripts/push-to-github.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
