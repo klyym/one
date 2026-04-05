@@ -70,7 +70,8 @@ const mapClientToDb = {
     current_phase: data.current_phase || data.currentPhase,
     start_date: data.start_date || data.startDate,
     end_date: data.end_date || data.endDate,
-    phases: data.phases,
+    // phases 字段存储在 project_phases 表中，不在这里映射
+    // phases: data.phases,
     notes: data.notes || data.description,
   }),
 
