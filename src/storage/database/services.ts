@@ -40,58 +40,59 @@ const mapClientToDb = {
     phone: data.phone,
     email: data.email,
     address: data.address,
-    company_name: data.company || data.company_name,
+    company_name: data.company_name || data.company,
     notes: data.notes,
   }),
-  
+
   // Designer 映射
   designer: (data: any) => ({
     name: data.name,
-    position: data.title || data.position,
+    position: data.position || data.title,
     phone: data.phone,
     email: data.email,
-    specialties: data.specialty ? data.specialty.join(',') : undefined,
+    specialties: data.specialties,
     rating: data.rating || 0,
     bio: data.bio,
   }),
-  
+
   // Project 映射
   project: (data: any) => ({
     name: data.name,
-    client_id: data.client_id || data.clientId || null,
-    designer_id: data.designer_id || data.designerId || null,
+    client_id: data.client_id,
+    designer_id: data.designer_id,
     status: data.status,
     priority: data.priority,
     budget: data.budget,
     area: data.area,
-    address: data.location || data.address,
+    address: data.address || data.location,
     style: data.style,
     overall_progress: data.overall_progress,
-    current_phase: data.currentPhase,
-    start_date: data.startDate,
-    end_date: data.endDate,
-    notes: data.description || data.notes,
+    current_phase: data.current_phase || data.currentPhase,
+    start_date: data.start_date || data.startDate,
+    end_date: data.end_date || data.endDate,
+    phases: data.phases,
+    notes: data.notes || data.description,
   }),
-  
+
   // DesignCase 映射
   designCase: (data: any) => ({
     name: data.name,
     style: data.style,
     area: data.area,
-    address: data.location || data.address,
+    address: data.address || data.location,
     images: data.images,
-    tags: data.tags ? data.tags.join(',') : undefined,
-    is_featured: data.featured || false,
+    tags: data.tags,
+    is_featured: data.is_featured || data.featured || false,
   }),
-  
+
   // FollowUp 映射
   followUp: (data: any) => ({
-    client_id: data.client_id || data.clientId || null,
+    client_id: data.client_id,
     type: data.type,
     content: data.content,
-    next_plan: data.next_plan || data.nextAction,
-    next_date: data.next_date || data.nextDate,
-    followed_by: data.followed_by || data.designerId || null,
+    next_plan: data.next_plan,
+    next_date: data.next_date,
+    followed_by: data.followed_by,
   }),
 };
 
@@ -264,8 +265,9 @@ export const clientService = {
   },
 
   async create(clientData: any) {
-    const dbData = mapClientToDb.client(clientData);
-    console.log('[ClientService] 创建客户:', dbData);
+    // 如果数据已经是映射后的格式（包含 company_name），直接使用
+    // 否则使用映射函数
+    const dbData = clientData.company_name ? clientData : mapClientToDb.client(clientData);
     const { data, error } = await client
       .from('clients')
       .insert(dbData)
@@ -357,8 +359,9 @@ export const designerService = {
   },
 
   async create(designer: any) {
-    const dbData = mapClientToDb.designer(designer);
-    console.log('[DesignerService] 创建设计师:', dbData);
+    // 如果数据已经是映射后的格式（包含 position），直接使用
+    // 否则使用映射函数
+    const dbData = designer.position ? designer : mapClientToDb.designer(designer);
     const { data, error } = await client
       .from('designers')
       .insert(dbData)
@@ -424,20 +427,21 @@ export const projectService = {
   },
 
   async create(project: any) {
-    const dbData = mapClientToDb.project(project);
-    console.log('[ProjectService] 创建项目:', dbData);
+    // 如果数据已经是映射后的格式（包含 current_phase），直接使用
+    // 否则使用映射函数
+    const dbData = project.current_phase ? project : mapClientToDb.project(project);
     const { data, error } = await client
       .from('projects')
       .insert(dbData)
       .select()
       .maybeSingle();
     if (error) throw new Error(`创建项目失败: ${error.message}`);
-    
+
     // 增加设计师项目计数
     if (project.designerId) {
       await this.incrementProjectCount(project.designerId);
     }
-    
+
     return data;
   },
 
@@ -494,8 +498,9 @@ export const caseService = {
   },
 
   async create(caseData: any) {
-    const dbData = mapClientToDb.designCase(caseData);
-    console.log('[CaseService] 创建案例:', dbData);
+    // 如果数据已经是映射后的格式（包含 is_featured），直接使用
+    // 否则使用映射函数
+    const dbData = caseData.is_featured !== undefined ? caseData : mapClientToDb.designCase(caseData);
     const { data, error } = await client
       .from('design_cases')
       .insert(dbData)
@@ -550,8 +555,9 @@ export const followUpService = {
   },
 
   async create(followUp: any) {
-    const dbData = mapClientToDb.followUp(followUp);
-    console.log('[FollowUpService] 创建跟进记录:', dbData);
+    // 如果数据已经是映射后的格式（包含 followed_by），直接使用
+    // 否则使用映射函数
+    const dbData = followUp.followed_by !== undefined ? followUp : mapClientToDb.followUp(followUp);
     const { data, error } = await client
       .from('follow_ups')
       .insert(dbData)

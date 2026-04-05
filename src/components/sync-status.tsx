@@ -38,7 +38,9 @@ export function useSyncStatus() {
   useEffect(() => {
     const listener = (newState: SyncState) => setState(newState);
     listeners.add(listener);
-    return () => listeners.delete(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   }, []);
 
   return state;
