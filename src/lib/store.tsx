@@ -7,6 +7,42 @@ import { setSyncStatus } from '@/components/sync-status';
 // 设计阶段列表
 const DESIGN_PHASES: DesignPhase[] = ['平面设计', 'SU模型推敲', '效果图', '施工图', '设计完成'];
 
+// ID 映射表：localStorage ID -> Supabase UUID
+const ID_MAP_KEY = 'studio_id_map';
+
+// 加载 ID 映射表
+const loadIdMap = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem(ID_MAP_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
+
+// 保存 ID 映射表
+const saveIdMap = (map: Record<string, string>) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(ID_MAP_KEY, JSON.stringify(map));
+  }
+};
+
+// 获取映射后的 UUID
+const getMappedId = (localId: string, idMap: Record<string, string>): string | null => {
+  return idMap[localId] || null;
+};
+
+// 记录 ID 映射
+const recordIdMapping = (localId: string, supabaseId: string, idMap: Record<string, string>): Record<string, string> => {
+  if (localId && supabaseId && localId !== supabaseId) {
+    const newMap = { ...idMap, [localId]: supabaseId };
+    saveIdMap(newMap);
+    return newMap;
+  }
+  return idMap;
+};
+
 // 创建默认的阶段进度
 const createDefaultPhases = (): PhaseProgress[] => {
   return DESIGN_PHASES.map((phase, index) => ({
@@ -67,7 +103,12 @@ const loadDbServices = async () => {
 };
 
 // 同步数据到 Supabase（异步，不阻塞）
-const syncToSupabase = async (action: string, data: any) => {
+const syncToSupabase = async (
+  action: string, 
+  data: any, 
+  idMap: Record<string, string>,
+  setIdMap: (map: Record<string, string>) => void
+) => {
   console.log('🔄 [Supabase Sync] 开始同步:', action, data);
   console.log('🔍 [Supabase Sync] 当前环境:', typeof window !== 'undefined' ? '客户端' : '服务端');
   setSyncStatus('syncing', `正在同步: ${action}`);
@@ -87,41 +128,70 @@ const syncToSupabase = async (action: string, data: any) => {
 
     let result;
     switch (action) {
-      case 'addProject':
+      case 'addProject': {
         console.log('📝 [Supabase Sync] 正在创建项目...', data);
-        result = await services.projectService.create(data);
+        // 映射 ID
+        const mappedData = {
+          ...data,
+          client_id: getMappedId(data.clientId, idMap) || data.clientId,
+          designer_id: getMappedId(data.designerId, idMap) || data.designerId,
+        };
+        console.log('🗺️ [Supabase Sync] ID 映射后:', mappedData);
+        result = await services.projectService.create(mappedData);
         console.log('✅ [Supabase Sync] 项目创建成功:', result);
         break;
-      case 'updateProject':
+      }
+      case 'updateProject': {
         console.log('📝 [Supabase Sync] 正在更新项目...', data.id, data);
-        result = await services.projectService.update(data.id, data);
+        const mappedData = {
+          ...data,
+          client_id: getMappedId(data.clientId, idMap) || data.clientId,
+          designer_id: getMappedId(data.designerId, idMap) || data.designerId,
+        };
+        const projectId = getMappedId(data.id, idMap) || data.id;
+        result = await services.projectService.update(projectId, mappedData);
         console.log('✅ [Supabase Sync] 项目更新成功:', result);
         break;
+      }
       case 'deleteProject':
         console.log('📝 [Supabase Sync] 跳过删除项目（ID映射问题）:', data.id);
         break;
-      case 'addClient':
+      case 'addClient': {
         console.log('📝 [Supabase Sync] 正在创建客户...', data);
         result = await services.clientService.create(data);
         console.log('✅ [Supabase Sync] 客户创建成功:', result);
+        if (result?.id && data.id) {
+          const newMap = recordIdMapping(data.id, result.id, idMap);
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 记录客户 ID 映射:', data.id, '->', result.id);
+        }
         break;
+      }
       case 'updateClient':
         console.log('📝 [Supabase Sync] 正在更新客户...', data.id, data);
-        result = await services.clientService.update(data.id, data);
+        const clientId = getMappedId(data.id, idMap) || data.id;
+        result = await services.clientService.update(clientId, data);
         console.log('✅ [Supabase Sync] 客户更新成功:', result);
         break;
       case 'deleteClient':
         console.log('📝 [Supabase Sync] 跳过删除客户（ID映射问题）:', data.id);
         // 注意：删除操作暂时跳过同步，因为需要 ID 映射表
         break;
-      case 'addDesigner':
+      case 'addDesigner': {
         console.log('📝 [Supabase Sync] 正在创建设计师...', data);
         result = await services.designerService.create(data);
         console.log('✅ [Supabase Sync] 设计师创建成功:', result);
+        if (result?.id && data.id) {
+          const newMap = recordIdMapping(data.id, result.id, idMap);
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 记录设计师 ID 映射:', data.id, '->', result.id);
+        }
         break;
+      }
       case 'updateDesigner':
         console.log('📝 [Supabase Sync] 正在更新设计师...', data.id, data);
-        result = await services.designerService.update(data.id, data);
+        const designerId = getMappedId(data.id, idMap) || data.id;
+        result = await services.designerService.update(designerId, data);
         console.log('✅ [Supabase Sync] 设计师更新成功:', result);
         break;
       case 'deleteDesigner':
@@ -140,11 +210,17 @@ const syncToSupabase = async (action: string, data: any) => {
       case 'deleteCase':
         console.log('📝 [Supabase Sync] 跳过删除案例（ID映射问题）:', data.id);
         break;
-      case 'addFollowUp':
+      case 'addFollowUp': {
         console.log('📝 [Supabase Sync] 正在创建跟进记录...', data);
-        result = await services.followUpService.create(data);
+        const mappedData = {
+          ...data,
+          client_id: getMappedId(data.clientId, idMap) || data.clientId,
+          followed_by: getMappedId(data.designerId, idMap) || data.designerId,
+        };
+        result = await services.followUpService.create(mappedData);
         console.log('✅ [Supabase Sync] 跟进记录创建成功:', result);
         break;
+      }
       case 'deleteFollowUp':
         console.log('📝 [Supabase Sync] 跳过删除跟进记录（ID映射问题）:', data.id);
         break;
@@ -513,6 +589,8 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   // 从 localStorage 加载数据，如果没有则使用初始数据
+  const [idMap, setIdMap] = useState<Record<string, string>>(loadIdMap);
+  
   const [projects, setProjects] = useState<Project[]>(() => {
     if (typeof window === 'undefined') return initialProjects;
     try {
@@ -581,7 +659,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = [...prev, newProject];
       saveToStorage(STORAGE_KEYS.projects, updated);
       // 异步同步到 Supabase
-      syncToSupabase('addProject', newProject).catch(console.error);
+      syncToSupabase('addProject', newProject, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -597,7 +675,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 异步同步到 Supabase
       const updatedProject = updated.find(p => p.id === id);
       if (updatedProject) {
-        syncToSupabase('updateProject', updatedProject).catch(console.error);
+        syncToSupabase('updateProject', updatedProject, idMap, setIdMap).catch(console.error);
       }
       return updated;
     });
@@ -608,7 +686,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = prev.filter(p => p.id !== id);
       saveToStorage(STORAGE_KEYS.projects, updated);
       // 异步同步到 Supabase
-      syncToSupabase('deleteProject', { id }).catch(console.error);
+      syncToSupabase('deleteProject', { id }, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -626,7 +704,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = [...prev, newClient];
       saveToStorage(STORAGE_KEYS.clients, updated);
       // 异步同步到 Supabase
-      syncToSupabase('addClient', newClient).catch(console.error);
+      syncToSupabase('addClient', newClient, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -638,7 +716,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 异步同步到 Supabase
       const updatedClient = updated.find(c => c.id === id);
       if (updatedClient) {
-        syncToSupabase('updateClient', updatedClient).catch(console.error);
+        syncToSupabase('updateClient', updatedClient, idMap, setIdMap).catch(console.error);
       }
       return updated;
     });
@@ -649,7 +727,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = prev.filter(c => c.id !== id);
       saveToStorage(STORAGE_KEYS.clients, updated);
       // 异步同步到 Supabase
-      syncToSupabase('deleteClient', { id }).catch(console.error);
+      syncToSupabase('deleteClient', { id }, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -667,7 +745,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = [...prev, newDesigner];
       saveToStorage(STORAGE_KEYS.designers, updated);
       // 异步同步到 Supabase
-      syncToSupabase('addDesigner', newDesigner).catch(console.error);
+      syncToSupabase('addDesigner', newDesigner, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -679,7 +757,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 异步同步到 Supabase
       const updatedDesigner = updated.find(d => d.id === id);
       if (updatedDesigner) {
-        syncToSupabase('updateDesigner', updatedDesigner).catch(console.error);
+        syncToSupabase('updateDesigner', updatedDesigner, idMap, setIdMap).catch(console.error);
       }
       return updated;
     });
@@ -690,7 +768,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = prev.filter(d => d.id !== id);
       saveToStorage(STORAGE_KEYS.designers, updated);
       // 异步同步到 Supabase
-      syncToSupabase('deleteDesigner', { id }).catch(console.error);
+      syncToSupabase('deleteDesigner', { id }, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -708,7 +786,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = [...prev, newCase];
       saveToStorage(STORAGE_KEYS.cases, updated);
       // 异步同步到 Supabase
-      syncToSupabase('addCase', newCase).catch(console.error);
+      syncToSupabase('addCase', newCase, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -720,7 +798,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 异步同步到 Supabase
       const updatedCase = updated.find(c => c.id === id);
       if (updatedCase) {
-        syncToSupabase('updateCase', updatedCase).catch(console.error);
+        syncToSupabase('updateCase', updatedCase, idMap, setIdMap).catch(console.error);
       }
       return updated;
     });
@@ -731,7 +809,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = prev.filter(c => c.id !== id);
       saveToStorage(STORAGE_KEYS.cases, updated);
       // 异步同步到 Supabase
-      syncToSupabase('deleteCase', { id }).catch(console.error);
+      syncToSupabase('deleteCase', { id }, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
@@ -747,7 +825,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = [newFollowUp, ...prev];
       saveToStorage(STORAGE_KEYS.followUps, updated);
       // 异步同步到 Supabase
-      syncToSupabase('addFollowUp', newFollowUp).catch(console.error);
+      syncToSupabase('addFollowUp', newFollowUp, idMap, setIdMap).catch(console.error);
       return updated;
     });
 
@@ -762,7 +840,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 异步同步到 Supabase
       const updatedClient = updated.find(c => c.id === followUp.clientId);
       if (updatedClient) {
-        syncToSupabase('updateClient', updatedClient).catch(console.error);
+        syncToSupabase('updateClient', updatedClient, idMap, setIdMap).catch(console.error);
       }
       return updated;
     });
@@ -773,7 +851,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = prev.filter(f => f.id !== id);
       saveToStorage(STORAGE_KEYS.followUps, updated);
       // 异步同步到 Supabase
-      syncToSupabase('deleteFollowUp', { id }).catch(console.error);
+      syncToSupabase('deleteFollowUp', { id }, idMap, setIdMap).catch(console.error);
       return updated;
     });
   };
