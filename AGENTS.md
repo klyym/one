@@ -12,6 +12,9 @@
 - **Styling**: Tailwind CSS 4
 - **图表库**: Recharts (数据可视化)
 - **状态管理**: React Context API
+- **数据库**: Supabase (PostgreSQL)
+- **ORM**: Drizzle ORM (Schema定义)
+- **数据访问**: Supabase SDK
 
 ## 目录结构
 
@@ -35,10 +38,19 @@
 │   │   └── layout/         # 布局组件
 │   │       ├── sidebar.tsx # 侧边栏导航
 │   │       └── main-layout.tsx # 主布局
+│   ├── storage/            # 数据存储
+│   │   └── database/       # 数据库相关
+│   │       ├── shared/
+│   │       │   └── schema.ts    # Drizzle Schema 定义
+│   │       ├── supabase-client.ts # Supabase 客户端
+│   │       ├── services.ts       # 数据库服务层
+│   │       └── init.ts          # 数据库初始化
 │   ├── hooks/              # 自定义 Hooks
 │   ├── lib/                # 工具库
 │   │   ├── utils.ts        # 通用工具函数 (cn)
-│   │   └── store.tsx       # 状态管理 Context
+│   │   ├── store.tsx       # 应用状态管理 Context
+│   │   ├── auth.tsx        # 用户认证 Context
+│   │   └── studio.tsx      # 工作室信息 Context
 │   ├── types/              # TypeScript 类型定义
 │   │   └── index.ts        # 数据类型定义
 │   └── server.ts           # 自定义服务端入口
@@ -152,6 +164,92 @@
 - 支持：JPG、PNG、GIF、WebP 格式，单文件最大 10MB
 - 返回：图片 key 和签名 URL（有效期 30 天）
 - 使用：S3Storage 对象存储服务
+
+## 数据库
+
+### 数据库技术栈
+- **数据库**: PostgreSQL (通过 Supabase)
+- **Schema 管理**: Drizzle ORM
+- **数据访问**: Supabase SDK (HTTP/PostgREST)
+- **访问控制**: RLS (Row Level Security)
+
+### 数据库表结构
+
+#### 核心表
+1. **studio_info** - 工作室基本信息
+2. **users** - 用户（管理员、设计师）
+3. **clients** - 客户信息
+4. **designers** - 设计师信息
+5. **projects** - 项目信息
+6. **project_phases** - 项目阶段进度
+7. **design_cases** - 设计案例
+8. **follow_ups** - 跟进记录
+
+### 数据库使用规范
+
+#### Schema 修改流程
+```bash
+# 1. 同步数据库模型
+coze-coding-ai db generate-models
+
+# 2. 修改 schema.ts
+# 编辑 src/storage/database/shared/schema.ts
+
+# 3. 同步到数据库
+coze-coding-ai db upgrade
+
+# 4. 配置 RLS 策略
+# 使用 exec_sql 工具执行 RLS SQL
+```
+
+#### 数据库服务层
+所有数据库操作通过 `src/storage/database/services.ts` 中的服务方法进行：
+
+```typescript
+import { userService, projectService, clientService } from '@/storage/database/services';
+
+// 查询
+const users = await userService.getAll();
+const user = await userService.getById('user-id');
+
+// 创建
+const newUser = await userService.create({
+  email: 'user@example.com',
+  name: 'User Name',
+  role: 'designer',
+  password_hash: 'hashed_password'
+});
+
+// 更新
+await userService.update('user-id', { name: 'New Name' });
+
+// 删除
+await userService.delete('user-id');
+```
+
+#### RLS 策略
+- 项目不使用 Supabase Auth，所有表使用场景 A（公开读写）
+- 权限控制在应用层实现
+- 禁止在数据库层依赖 auth.uid() 和 auth.role()
+
+#### 注意事项
+- 🔴 数据操作使用 Supabase SDK（`client.from()`），不用 Drizzle ORM 语法
+- 🔴 字段名使用 snake_case（如 `created_at`），禁止 camelCase
+- 每次调用都检查了 `{ data, error }` 并 throw
+- 新建表已执行 `db upgrade` 并配置了 RLS
+- `.delete()` / `.update()` 都带了 filter
+- 不要删除或修改 Supabase 内置 schema（`auth`、`storage`、`realtime`、`extensions`）
+
+### 数据库初始化
+应用启动时会自动初始化数据库数据：
+- 工作室基本信息
+- 默认用户账号（admin@studio.com, chen@studio.com）
+
+如需手动初始化：
+```typescript
+import { initAppDatabase } from '@/storage/database/init';
+await initAppDatabase();
+```
 
 ## 包管理规范
 
