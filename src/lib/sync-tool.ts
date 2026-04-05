@@ -13,6 +13,51 @@ const STORAGE_KEYS = {
 };
 
 /**
+ * 初始数据（从 store.tsx 复制）
+ */
+const initialDesigners = [
+  {
+    id: '1',
+    name: '陈设计师',
+    title: '首席设计师',
+    specialty: ['现代简约', '北欧风格', '工业风'],
+    phone: '136-0000-0001',
+    email: 'chen@studio.com',
+    activeProjects: 4,
+    completedProjects: 28,
+    rating: 4.9,
+    bio: '15年室内设计经验，擅长现代简约风格',
+    joinedAt: '2018-03-15',
+  },
+  {
+    id: '2',
+    name: '林设计师',
+    title: '高级设计师',
+    specialty: ['中式风格', '新古典', '轻奢'],
+    phone: '136-0000-0002',
+    email: 'lin@studio.com',
+    activeProjects: 3,
+    completedProjects: 22,
+    rating: 4.8,
+    bio: '专注中式风格与现代融合',
+    joinedAt: '2019-06-20',
+  },
+  {
+    id: '3',
+    name: '赵设计师',
+    title: '设计师',
+    specialty: ['现代简约', '日式风格', '极简主义'],
+    phone: '136-0000-0003',
+    email: 'zhao@studio.com',
+    activeProjects: 2,
+    completedProjects: 15,
+    rating: 4.7,
+    bio: '热爱极简设计美学',
+    joinedAt: '2020-09-10',
+  },
+];
+
+/**
  * 检查是否需要同步
  */
 export function needsSync(): boolean {
@@ -63,7 +108,7 @@ export async function syncAllDataToSupabase() {
     const designerIdMap = new Map<string, string>();
     
     // 同步客户
-    const clients = readFromStorage(STORAGE_KEYS.clients);
+    let clients = readFromStorage(STORAGE_KEYS.clients);
     console.log('📊 [SyncTool] 从 localStorage 读取到客户:', clients?.length || 0);
     if (clients && Array.isArray(clients) && clients.length > 0) {
       console.log(`📝 [SyncTool] 开始同步 ${clients.length} 个客户...`);
@@ -93,8 +138,17 @@ export async function syncAllDataToSupabase() {
     
     console.log('🗺️ [SyncTool] 客户 ID 映射表:', Object.fromEntries(clientIdMap));
     
-    // 同步设计师
-    const designers = readFromStorage(STORAGE_KEYS.designers);
+    // 同步设计师（如果 localStorage 没有数据，使用初始数据）
+    let designers = readFromStorage(STORAGE_KEYS.designers);
+    if (!designers || designers.length === 0) {
+      console.log('⚠️ [SyncTool] localStorage 中没有设计师数据，使用初始数据');
+      designers = initialDesigners;
+      // 保存到 localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.designers, JSON.stringify(designers));
+      }
+    }
+    
     console.log('📊 [SyncTool] 从 localStorage 读取到设计师:', designers?.length || 0);
     if (designers && Array.isArray(designers) && designers.length > 0) {
       console.log(`📝 [SyncTool] 开始同步 ${designers.length} 个设计师...`);
@@ -134,13 +188,22 @@ export async function syncAllDataToSupabase() {
           console.log(`🗺️ [SyncTool] 项目关联 - client_id: ${project.clientId}, designer_id: ${project.designerId}`);
           
           // 映射 ID
+          const mappedClientId = clientIdMap.get(project.clientId);
+          const mappedDesignerId = designerIdMap.get(project.designerId);
+          
           const mappedProject = {
             ...project,
-            client_id: clientIdMap.get(project.clientId) || project.clientId,
-            designer_id: designerIdMap.get(project.designerId) || project.designerId,
+            client_id: mappedClientId || project.clientId,
+            designer_id: mappedDesignerId || project.designerId,
           };
           
           console.log(`🗺️ [SyncTool] 映射后 - client_id: ${mappedProject.client_id}, designer_id: ${mappedProject.designer_id}`);
+          
+          // 如果两个 ID 都映射成功，才继续
+          if (!mappedClientId || !mappedDesignerId) {
+            console.warn(`⚠️ [SyncTool] 跳过项目（缺少 ID 映射）: ${project.name}`);
+            continue;
+          }
           
           const result = await services.projectService.create(mappedProject);
           console.log(`✅ [SyncTool] 项目同步成功: ${project.name}`, result);
@@ -192,9 +255,16 @@ export async function syncAllDataToSupabase() {
           console.log(`📝 [SyncTool] 同步跟进记录`);
           
           // 映射 client_id
+          const mappedClientId = clientIdMap.get(followUp.clientId);
+          
+          if (!mappedClientId) {
+            console.warn(`⚠️ [SyncTool] 跳过跟进记录（缺少客户 ID 映射）`);
+            continue;
+          }
+          
           const mappedFollowUp = {
             ...followUp,
-            client_id: clientIdMap.get(followUp.clientId) || followUp.clientId,
+            client_id: mappedClientId,
           };
           
           const result = await services.followUpService.create(mappedFollowUp);
