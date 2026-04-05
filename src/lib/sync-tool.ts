@@ -191,10 +191,22 @@ export async function syncAllDataToSupabase() {
           const mappedClientId = clientIdMap.get(project.clientId);
           const mappedDesignerId = designerIdMap.get(project.designerId);
           
+          // 创建映射后的项目对象（不包含原始的 clientId/designerId）
           const mappedProject = {
-            ...project,
-            client_id: mappedClientId || project.clientId,
-            designer_id: mappedDesignerId || project.designerId,
+            name: project.name,
+            client_id: mappedClientId || null,
+            designer_id: mappedDesignerId || null,
+            status: project.status,
+            priority: project.priority,
+            budget: project.budget,
+            area: project.area,
+            address: project.location || project.address,
+            style: project.style,
+            overall_progress: project.overallProgress,
+            current_phase: project.currentPhase,
+            start_date: project.startDate,
+            end_date: project.endDate,
+            notes: project.description || project.notes,
           };
           
           console.log(`🗺️ [SyncTool] 映射后 - client_id: ${mappedProject.client_id}, designer_id: ${mappedProject.designer_id}`);
@@ -254,17 +266,23 @@ export async function syncAllDataToSupabase() {
         try {
           console.log(`📝 [SyncTool] 同步跟进记录`);
           
-          // 映射 client_id
+          // 映射 client_id 和 followed_by
           const mappedClientId = clientIdMap.get(followUp.clientId);
+          const mappedDesignerId = followUp.designerId ? designerIdMap.get(followUp.designerId) : null;
           
           if (!mappedClientId) {
             console.warn(`⚠️ [SyncTool] 跳过跟进记录（缺少客户 ID 映射）`);
             continue;
           }
           
+          // 创建映射后的跟进记录对象（不包含原始的 clientId/designerId）
           const mappedFollowUp = {
-            ...followUp,
             client_id: mappedClientId,
+            type: followUp.type,
+            content: followUp.content,
+            next_plan: followUp.nextAction,
+            next_date: followUp.nextDate,
+            followed_by: mappedDesignerId,
           };
           
           const result = await services.followUpService.create(mappedFollowUp);
