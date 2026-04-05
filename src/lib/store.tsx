@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { Project, Client, Designer, DesignCase, PhaseProgress, DesignPhase, FollowUp } from '@/types';
 
 // 设计阶段列表
@@ -20,12 +20,12 @@ const calculateOverallProgress = (phases: PhaseProgress[]): number => {
   const totalPhases = phases.length;
   const completedPhases = phases.filter(p => p.status === 'completed').length;
   const currentPhase = phases.find(p => p.status === 'in_progress');
-  
+
   if (currentPhase) {
     const currentPhaseIndex = phases.findIndex(p => p.phase === currentPhase.phase);
     return Math.round(((completedPhases + currentPhase.progress / 100) / totalPhases) * 100);
   }
-  
+
   return Math.round((completedPhases / totalPhases) * 100);
 };
 
@@ -33,11 +33,20 @@ const calculateOverallProgress = (phases: PhaseProgress[]): number => {
 const getCurrentPhase = (phases: PhaseProgress[]): DesignPhase => {
   const inProgressPhase = phases.find(p => p.status === 'in_progress');
   if (inProgressPhase) return inProgressPhase.phase;
-  
+
   const pendingPhase = phases.find(p => p.status === 'pending');
   if (pendingPhase) return pendingPhase.phase;
-  
+
   return '设计完成';
+};
+
+// localStorage 键
+const STORAGE_KEYS = {
+  projects: 'studio_projects',
+  clients: 'studio_clients',
+  designers: 'studio_designers',
+  cases: 'studio_cases',
+  followUps: 'studio_followups',
 };
 
 // 初始数据
@@ -393,11 +402,62 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [designers, setDesigners] = useState<Designer[]>(initialDesigners);
-  const [cases, setCases] = useState<DesignCase[]>(initialCases);
-  const [followUps, setFollowUps] = useState<FollowUp[]>(initialFollowUps);
+  // 从 localStorage 加载数据，如果没有则使用初始数据
+  const [projects, setProjects] = useState<Project[]>(() => {
+    if (typeof window === 'undefined') return initialProjects;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.projects);
+      return stored ? JSON.parse(stored) : initialProjects;
+    } catch {
+      return initialProjects;
+    }
+  });
+  const [clients, setClients] = useState<Client[]>(() => {
+    if (typeof window === 'undefined') return initialClients;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.clients);
+      return stored ? JSON.parse(stored) : initialClients;
+    } catch {
+      return initialClients;
+    }
+  });
+  const [designers, setDesigners] = useState<Designer[]>(() => {
+    if (typeof window === 'undefined') return initialDesigners;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.designers);
+      return stored ? JSON.parse(stored) : initialDesigners;
+    } catch {
+      return initialDesigners;
+    }
+  });
+  const [cases, setCases] = useState<DesignCase[]>(() => {
+    if (typeof window === 'undefined') return initialCases;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.cases);
+      return stored ? JSON.parse(stored) : initialCases;
+    } catch {
+      return initialCases;
+    }
+  });
+  const [followUps, setFollowUps] = useState<FollowUp[]>(() => {
+    if (typeof window === 'undefined') return initialFollowUps;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.followUps);
+      return stored ? JSON.parse(stored) : initialFollowUps;
+    } catch {
+      return initialFollowUps;
+    }
+  });
+
+  // 保存数据到 localStorage（仅在客户端）
+  const saveToStorage = (key: string, data: any) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error);
+    }
+  };
 
   // 项目操作
   const addProject = (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -407,21 +467,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
     };
-    setProjects(prev => [...prev, newProject]);
+    setProjects(prev => {
+      const updated = [...prev, newProject];
+      saveToStorage(STORAGE_KEYS.projects, updated);
+      return updated;
+    });
   };
 
   const updateProject = (id: string, updates: Partial<Project>) => {
-    setProjects(prev =>
-      prev.map(p =>
+    setProjects(prev => {
+      const updated = prev.map(p =>
         p.id === id
           ? { ...p, ...updates, updatedAt: new Date().toISOString().split('T')[0] }
           : p
-      )
-    );
+      );
+      saveToStorage(STORAGE_KEYS.projects, updated);
+      return updated;
+    });
   };
 
   const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
+    setProjects(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      saveToStorage(STORAGE_KEYS.projects, updated);
+      return updated;
+    });
   };
 
   // 客户操作
@@ -433,17 +503,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       totalSpent: 0,
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setClients(prev => [...prev, newClient]);
+    setClients(prev => {
+      const updated = [...prev, newClient];
+      saveToStorage(STORAGE_KEYS.clients, updated);
+      return updated;
+    });
   };
 
   const updateClient = (id: string, updates: Partial<Client>) => {
-    setClients(prev =>
-      prev.map(c => (c.id === id ? { ...c, ...updates } : c))
-    );
+    setClients(prev => {
+      const updated = prev.map(c => (c.id === id ? { ...c, ...updates } : c));
+      saveToStorage(STORAGE_KEYS.clients, updated);
+      return updated;
+    });
   };
 
   const deleteClient = (id: string) => {
-    setClients(prev => prev.filter(c => c.id !== id));
+    setClients(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      saveToStorage(STORAGE_KEYS.clients, updated);
+      return updated;
+    });
   };
 
   // 设计师操作
@@ -455,17 +535,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       completedProjects: 0,
       joinedAt: new Date().toISOString().split('T')[0],
     };
-    setDesigners(prev => [...prev, newDesigner]);
+    setDesigners(prev => {
+      const updated = [...prev, newDesigner];
+      saveToStorage(STORAGE_KEYS.designers, updated);
+      return updated;
+    });
   };
 
   const updateDesigner = (id: string, updates: Partial<Designer>) => {
-    setDesigners(prev =>
-      prev.map(d => (d.id === id ? { ...d, ...updates } : d))
-    );
+    setDesigners(prev => {
+      const updated = prev.map(d => (d.id === id ? { ...d, ...updates } : d));
+      saveToStorage(STORAGE_KEYS.designers, updated);
+      return updated;
+    });
   };
 
   const deleteDesigner = (id: string) => {
-    setDesigners(prev => prev.filter(d => d.id !== id));
+    setDesigners(prev => {
+      const updated = prev.filter(d => d.id !== id);
+      saveToStorage(STORAGE_KEYS.designers, updated);
+      return updated;
+    });
   };
 
   // 案例操作
@@ -487,7 +577,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteCase = (id: string) => {
-    setCases(prev => prev.filter(c => c.id !== id));
+    setCases(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      saveToStorage(STORAGE_KEYS.cases, updated);
+      return updated;
+    });
   };
 
   // 跟进记录操作
@@ -497,20 +591,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       id: Date.now().toString(),
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setFollowUps(prev => [newFollowUp, ...prev]);
-    
+    setFollowUps(prev => {
+      const updated = [newFollowUp, ...prev];
+      saveToStorage(STORAGE_KEYS.followUps, updated);
+      return updated;
+    });
+
     // 更新客户的最后联系时间
-    setClients(prev =>
-      prev.map(c =>
+    setClients(prev => {
+      const updated = prev.map(c =>
         c.id === followUp.clientId
           ? { ...c, lastContactAt: newFollowUp.createdAt }
           : c
-      )
-    );
+      );
+      saveToStorage(STORAGE_KEYS.clients, updated);
+      return updated;
+    });
   };
 
   const deleteFollowUp = (id: string) => {
-    setFollowUps(prev => prev.filter(f => f.id !== id));
+    setFollowUps(prev => {
+      const updated = prev.filter(f => f.id !== id);
+      saveToStorage(STORAGE_KEYS.followUps, updated);
+      return updated;
+    });
   };
 
   return (
