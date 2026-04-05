@@ -28,8 +28,17 @@ const saveIdMap = (map: Record<string, string>) => {
   }
 };
 
+// 检查 ID 是否已经是 UUID 格式
+const isUUID = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
 // 获取映射后的 UUID
 const getMappedId = (localId: string, idMap: Record<string, string>): string | null => {
+  // 如果 ID 已经是 UUID 格式，直接使用
+  if (!localId) return null;
+  if (isUUID(localId)) return localId;
   return idMap[localId] || null;
 };
 
