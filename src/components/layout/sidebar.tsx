@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SyncStatusIndicator from '@/components/sync-status';
+import SyncTestButton from '@/components/sync-test-button';
 
 const navigation = [
   { name: '数据看板', href: '/', icon: LayoutDashboard },
@@ -154,6 +155,9 @@ export function Sidebar() {
         <div className="mt-4 px-3 py-2 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground mb-2">版本 1.0.0</p>
           <SyncStatusIndicator />
+          <div className="mt-2">
+            <SyncTestButton />
+          </div>
         </div>
       </div>
     </div>
