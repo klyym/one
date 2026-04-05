@@ -58,8 +58,8 @@ const mapClientToDb = {
   // Project 映射
   project: (data: any) => ({
     name: data.name,
-    client_id: data.clientId,
-    designer_id: data.designerId,
+    client_id: data.clientId || null,
+    designer_id: data.designerId || null,
     status: data.status,
     priority: data.priority,
     budget: data.budget,
@@ -86,12 +86,12 @@ const mapClientToDb = {
   
   // FollowUp 映射
   followUp: (data: any) => ({
-    client_id: data.clientId,
+    client_id: data.clientId || null,
     type: data.type,
     content: data.content,
     next_plan: data.nextAction,
     next_date: data.nextDate,
-    followed_by: data.designerId,
+    followed_by: data.designerId || null,
   }),
 };
 
