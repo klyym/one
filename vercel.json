@@ -1,9 +1,5 @@
 {
-  "buildCommand": "pnpm install --force && pnpm run build",
-  "outputDirectory": ".next",
   "framework": "nextjs",
-  "devCommand": null,
-  "installCommand": "pnpm install --force",
   "regions": ["hkg1"],
   "headers": [
     {
