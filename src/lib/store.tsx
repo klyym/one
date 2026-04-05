@@ -142,8 +142,22 @@ const syncToSupabase = async (
           console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将设计师设为 null:', data.designerId);
         }
 
+        // 创建映射后的数据，排除 camelCase 的 ID 字段
         const mappedData = {
-          ...data,
+          name: data.name,
+          location: data.location,
+          area: data.area,
+          style: data.style,
+          budget: data.budget,
+          status: data.status,
+          priority: data.priority,
+          start_date: data.startDate,
+          end_date: data.endDate,
+          current_phase: data.currentPhase,
+          overall_progress: data.overallProgress,
+          phases: data.phases,
+          created_at: data.createdAt,
+          updated_at: data.updatedAt,
           client_id: mappedClientId || null,
           designer_id: mappedDesignerId || null,
         };
@@ -165,17 +179,22 @@ const syncToSupabase = async (
         const mappedDesignerId = getMappedId(data.designerId, idMap);
 
         // 警告：如果找不到映射
-        if (!mappedClientId) {
+        if (!mappedClientId && data.clientId) {
           console.warn('⚠️ [Supabase Sync] 找不到客户 ID 映射，将客户设为 null:', data.clientId);
         }
-        if (!mappedDesignerId) {
+        if (!mappedDesignerId && data.designerId) {
           console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将设计师设为 null:', data.designerId);
         }
 
+        // 创建映射后的数据，排除 camelCase 的 ID 字段
+        const { clientId, designerId, createdAt, updatedAt, phases, ...restData } = data;
         const mappedData = {
-          ...data,
+          ...restData,
           client_id: mappedClientId || null,
           designer_id: mappedDesignerId || null,
+          created_at: createdAt,
+          updated_at: updatedAt,
+          phases: phases,
         };
         const projectId = getMappedId(data.id, idMap) || data.id;
         result = await services.projectService.update(projectId, mappedData);
@@ -311,10 +330,15 @@ const syncToSupabase = async (
           console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将跟进人设为 null:', data.designerId);
         }
 
+        // 创建映射后的数据，排除 camelCase 的 ID 字段
         const mappedData = {
-          ...data,
-          client_id: mappedClientId || null,
+          type: data.type,
+          content: data.content,
+          next_plan: data.nextAction,
+          next_date: data.nextDate,
           followed_by: mappedDesignerId || null,
+          client_id: mappedClientId || null,
+          created_at: data.createdAt,
         };
         result = await services.followUpService.create(mappedData);
         console.log('✅ [Supabase Sync] 跟进记录创建成功:', result);
