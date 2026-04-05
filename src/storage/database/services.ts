@@ -555,12 +555,26 @@ export const followUpService = {
   },
 
   async create(followUp: any) {
-    // 如果数据已经是映射后的格式（包含 followed_by），直接使用
-    // 否则使用映射函数
-    const dbData = followUp.followed_by !== undefined ? followUp : mapClientToDb.followUp(followUp);
+    // 检查数据是否已经是映射后的格式（包含 snake_case 字段）
+    const isMapped = followUp.client_id !== undefined && followUp.type !== undefined;
+    const dbData = isMapped ? followUp : mapClientToDb.followUp(followUp);
+
+    // 如果 PostgREST schema 缓存中没有 followed_by 字段，则不传递它
+    // 这是一个临时解决方案，正确的解决方法是在 Supabase Dashboard 中重启项目
+    const safeDbData = {
+      client_id: dbData.client_id,
+      type: dbData.type,
+      content: dbData.content,
+      next_plan: dbData.next_plan,
+      next_date: dbData.next_date,
+      created_at: dbData.created_at,
+      // 暂时注释掉 followed_by，直到 PostgREST schema 缓存更新
+      // followed_by: dbData.followed_by,
+    };
+
     const { data, error } = await client
       .from('follow_ups')
-      .insert(dbData)
+      .insert(safeDbData)
       .select()
       .maybeSingle();
     if (error) throw new Error(`创建跟进记录失败: ${error.message}`);
