@@ -591,3 +591,56 @@ export const followUpService = {
     if (error) throw new Error(`删除跟进记录失败: ${error.message}`);
   },
 };
+
+// 项目阶段进度
+export const projectPhasesService = {
+  async getByProjectId(projectId: string) {
+    const { data, error } = await client
+      .from('project_phases')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(`获取项目阶段进度失败: ${error.message}`);
+    return data || [];
+  },
+
+  async create(phase: any) {
+    const { data, error } = await client
+      .from('project_phases')
+      .insert({
+        project_id: phase.project_id,
+        phase_name: phase.phase_name,
+        status: phase.status,
+        progress: phase.progress || 0,
+        notes: phase.notes,
+        start_date: phase.start_date,
+        end_date: phase.end_date,
+      })
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(`创建阶段进度失败: ${error.message}`);
+    return data;
+  },
+
+  async update(id: string, updates: any) {
+    const { data, error } = await client
+      .from('project_phases')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(`更新阶段进度失败: ${error.message}`);
+    return data;
+  },
+
+  async deleteByProjectId(projectId: string) {
+    const { error } = await client
+      .from('project_phases')
+      .delete()
+      .eq('project_id', projectId);
+    if (error) throw new Error(`删除项目阶段进度失败: ${error.message}`);
+  },
+};
