@@ -153,9 +153,17 @@ const syncToSupabase = async (
         console.log('✅ [Supabase Sync] 项目更新成功:', result);
         break;
       }
-      case 'deleteProject':
-        console.log('📝 [Supabase Sync] 跳过删除项目（ID映射问题）:', data.id);
+      case 'deleteProject': {
+        console.log('📝 [Supabase Sync] 正在删除项目...', data.id);
+        const projectId = getMappedId(data.id, idMap);
+        if (projectId) {
+          result = await services.projectService.delete(projectId);
+          console.log('✅ [Supabase Sync] 项目删除成功');
+        } else {
+          console.warn('⚠️ [Supabase Sync] 跳过删除项目（找不到 ID 映射）:', data.id);
+        }
         break;
+      }
       case 'addClient': {
         console.log('📝 [Supabase Sync] 正在创建客户...', data);
         result = await services.clientService.create(data);
@@ -173,10 +181,22 @@ const syncToSupabase = async (
         result = await services.clientService.update(clientId, data);
         console.log('✅ [Supabase Sync] 客户更新成功:', result);
         break;
-      case 'deleteClient':
-        console.log('📝 [Supabase Sync] 跳过删除客户（ID映射问题）:', data.id);
-        // 注意：删除操作暂时跳过同步，因为需要 ID 映射表
+      case 'deleteClient': {
+        console.log('📝 [Supabase Sync] 正在删除客户...', data.id);
+        const clientId = getMappedId(data.id, idMap);
+        if (clientId) {
+          result = await services.clientService.delete(clientId);
+          console.log('✅ [Supabase Sync] 客户删除成功');
+          // 从 ID 映射表移除
+          const newMap = { ...idMap };
+          delete newMap[data.id];
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 移除客户 ID 映射:', data.id);
+        } else {
+          console.warn('⚠️ [Supabase Sync] 跳过删除客户（找不到 ID 映射）:', data.id);
+        }
         break;
+      }
       case 'addDesigner': {
         console.log('📝 [Supabase Sync] 正在创建设计师...', data);
         result = await services.designerService.create(data);
@@ -194,9 +214,22 @@ const syncToSupabase = async (
         result = await services.designerService.update(designerId, data);
         console.log('✅ [Supabase Sync] 设计师更新成功:', result);
         break;
-      case 'deleteDesigner':
-        console.log('📝 [Supabase Sync] 跳过删除设计师（ID映射问题）:', data.id);
+      case 'deleteDesigner': {
+        console.log('📝 [Supabase Sync] 正在删除设计师...', data.id);
+        const designerId = getMappedId(data.id, idMap);
+        if (designerId) {
+          result = await services.designerService.delete(designerId);
+          console.log('✅ [Supabase Sync] 设计师删除成功');
+          // 从 ID 映射表移除
+          const newMap = { ...idMap };
+          delete newMap[data.id];
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 移除设计师 ID 映射:', data.id);
+        } else {
+          console.warn('⚠️ [Supabase Sync] 跳过删除设计师（找不到 ID 映射）:', data.id);
+        }
         break;
+      }
       case 'addCase':
         console.log('📝 [Supabase Sync] 正在创建案例...', data);
         result = await services.caseService.create(data);
@@ -207,9 +240,17 @@ const syncToSupabase = async (
         result = await services.caseService.update(data.id, data);
         console.log('✅ [Supabase Sync] 案例更新成功:', result);
         break;
-      case 'deleteCase':
-        console.log('📝 [Supabase Sync] 跳过删除案例（ID映射问题）:', data.id);
+      case 'deleteCase': {
+        console.log('📝 [Supabase Sync] 正在删除案例...', data.id);
+        const caseId = getMappedId(data.id, idMap);
+        if (caseId) {
+          result = await services.caseService.delete(caseId);
+          console.log('✅ [Supabase Sync] 案例删除成功');
+        } else {
+          console.warn('⚠️ [Supabase Sync] 跳过删除案例（找不到 ID 映射）:', data.id);
+        }
         break;
+      }
       case 'addFollowUp': {
         console.log('📝 [Supabase Sync] 正在创建跟进记录...', data);
         const mappedData = {
@@ -221,9 +262,17 @@ const syncToSupabase = async (
         console.log('✅ [Supabase Sync] 跟进记录创建成功:', result);
         break;
       }
-      case 'deleteFollowUp':
-        console.log('📝 [Supabase Sync] 跳过删除跟进记录（ID映射问题）:', data.id);
+      case 'deleteFollowUp': {
+        console.log('📝 [Supabase Sync] 正在删除跟进记录...', data.id);
+        const followUpId = getMappedId(data.id, idMap);
+        if (followUpId) {
+          result = await services.followUpService.delete(followUpId);
+          console.log('✅ [Supabase Sync] 跟进记录删除成功');
+        } else {
+          console.warn('⚠️ [Supabase Sync] 跳过删除跟进记录（找不到 ID 映射）:', data.id);
+        }
         break;
+      }
     }
     console.log('🎉 [Supabase Sync] 同步完成:', action, '结果:', result);
     setSyncStatus('success', `${action} 同步成功`);
