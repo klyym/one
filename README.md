@@ -1,363 +1,255 @@
-# projects
+# 🚀 室内设计工作室管理系统
 
-这是一个基于 [Next.js 16](https://nextjs.org) + [shadcn/ui](https://ui.shadcn.com) 的全栈应用项目，由扣子编程 CLI 创建。
+专业的室内设计工作室管理平台，用于管理项目、客户、设计师和设计案例。
 
-## 快速开始
+## ✨ 功能特性
 
-### 启动开发服务器
+- 📊 **数据看板** - 实时统计项目、客户、营收数据
+- 📁 **项目管理** - 阶段化进度管理（平面设计 → SU模型 → 效果图 → 施工图）
+- 👥 **客户管理** - 客户信息管理、跟进记录、消费统计
+- 🎨 **案例展示** - 多图展示、风格筛选、精选案例
+- 👨‍💼 **设计师管理** - 设计师信息、专长风格、项目统计
+- ⚙️ **系统设置** - 工作室信息、通知设置、主题配置
 
-```bash
-coze dev
-```
+## 🛠️ 技术栈
 
-启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看应用。
+- **Framework**: Next.js 16 (App Router)
+- **Core**: React 19
+- **Language**: TypeScript 5
+- **UI**: shadcn/ui + Tailwind CSS 4
+- **Database**: Supabase (PostgreSQL)
+- **Charts**: Recharts
+- **Storage**: S3 兼容对象存储
 
-开发服务器支持热更新，修改代码后页面会自动刷新。
+## 📦 快速开始
 
-### 构建生产版本
-
-```bash
-coze build
-```
-
-### 启动生产服务器
-
-```bash
-coze start
-```
-
-## 项目结构
-
-```
-src/
-├── app/                      # Next.js App Router 目录
-│   ├── layout.tsx           # 根布局组件
-│   ├── page.tsx             # 首页
-│   ├── globals.css          # 全局样式（包含 shadcn 主题变量）
-│   └── [route]/             # 其他路由页面
-├── components/              # React 组件目录
-│   └── ui/                  # shadcn/ui 基础组件（优先使用）
-│       ├── button.tsx
-│       ├── card.tsx
-│       └── ...
-├── lib/                     # 工具函数库
-│   └── utils.ts            # cn() 等工具函数
-└── hooks/                   # 自定义 React Hooks（可选）
-
-server/
-├── index.ts                 # 自定义服务器入口
-├── tsconfig.json           # Server TypeScript 配置
-└── dist/                    # 编译输出目录（自动生成）
-```
-
-## 核心开发规范
-
-### 1. 组件开发
-
-**优先使用 shadcn/ui 基础组件**
-
-本项目已预装完整的 shadcn/ui 组件库，位于 `src/components/ui/` 目录。开发时应优先使用这些组件作为基础：
-
-```tsx
-// ✅ 推荐：使用 shadcn 基础组件
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-
-export default function MyComponent() {
-  return (
-    <Card>
-      <CardHeader>标题</CardHeader>
-      <CardContent>
-        <Input placeholder="输入内容" />
-        <Button>提交</Button>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-**可用的 shadcn 组件清单**
-
-- 表单：`button`, `input`, `textarea`, `select`, `checkbox`, `radio-group`, `switch`, `slider`
-- 布局：`card`, `separator`, `tabs`, `accordion`, `collapsible`, `scroll-area`
-- 反馈：`alert`, `alert-dialog`, `dialog`, `toast`, `sonner`, `progress`
-- 导航：`dropdown-menu`, `menubar`, `navigation-menu`, `context-menu`
-- 数据展示：`table`, `avatar`, `badge`, `hover-card`, `tooltip`, `popover`
-- 其他：`calendar`, `command`, `carousel`, `resizable`, `sidebar`
-
-详见 `src/components/ui/` 目录下的具体组件实现。
-
-### 2. 路由开发
-
-Next.js 使用文件系统路由，在 `src/app/` 目录下创建文件夹即可添加路由：
+### 1. 克隆项目
 
 ```bash
-# 创建新路由 /about
-src/app/about/page.tsx
-
-# 创建动态路由 /posts/[id]
-src/app/posts/[id]/page.tsx
-
-# 创建路由组（不影响 URL）
-src/app/(marketing)/about/page.tsx
-
-# 创建 API 路由
-src/app/api/users/route.ts
+git clone <your-repo-url>
+cd projects
 ```
 
-**页面组件示例**
-
-```tsx
-// src/app/about/page.tsx
-import { Button } from '@/components/ui/button';
-
-export const metadata = {
-  title: '关于我们',
-  description: '关于页面描述',
-};
-
-export default function AboutPage() {
-  return (
-    <div>
-      <h1>关于我们</h1>
-      <Button>了解更多</Button>
-    </div>
-  );
-}
-```
-
-**动态路由示例**
-
-```tsx
-// src/app/posts/[id]/page.tsx
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  return <div>文章 ID: {id}</div>;
-}
-```
-
-**API 路由示例**
-
-```tsx
-// src/app/api/users/route.ts
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  return NextResponse.json({ users: [] });
-}
-
-export async function POST(request: Request) {
-  const body = await request.json();
-  return NextResponse.json({ success: true });
-}
-```
-
-### 3. 依赖管理
-
-**必须使用 pnpm 管理依赖**
+### 2. 安装依赖
 
 ```bash
-# ✅ 安装依赖
 pnpm install
-
-# ✅ 添加新依赖
-pnpm add package-name
-
-# ✅ 添加开发依赖
-pnpm add -D package-name
-
-# ❌ 禁止使用 npm 或 yarn
-# npm install  # 错误！
-# yarn add     # 错误！
 ```
 
-项目已配置 `preinstall` 脚本，使用其他包管理器会报错。
+### 3. 配置环境变量
 
-### 4. 样式开发
+创建 `.env.local` 文件：
 
-**使用 Tailwind CSS v4**
-
-本项目使用 Tailwind CSS v4 进行样式开发，并已配置 shadcn 主题变量。
-
-```tsx
-// 使用 Tailwind 类名
-<div className="flex items-center gap-4 p-4 rounded-lg bg-background">
-  <Button className="bg-primary text-primary-foreground">
-    主要按钮
-  </Button>
-</div>
-
-// 使用 cn() 工具函数合并类名
-import { cn } from '@/lib/utils';
-
-<div className={cn(
-  "base-class",
-  condition && "conditional-class",
-  className
-)}>
-  内容
-</div>
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://你的项目ID.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的anon密钥
+SUPABASE_SERVICE_ROLE_KEY=你的service_role密钥
 ```
 
-**主题变量**
+### 4. 初始化数据库
 
-主题变量定义在 `src/app/globals.css` 中，支持亮色/暗色模式：
+在 Supabase Dashboard SQL Editor 中执行初始化脚本：
 
-- `--background`, `--foreground`
-- `--primary`, `--primary-foreground`
-- `--secondary`, `--secondary-foreground`
-- `--muted`, `--muted-foreground`
-- `--accent`, `--accent-foreground`
-- `--destructive`, `--destructive-foreground`
-- `--border`, `--input`, `--ring`
-
-### 5. 表单开发
-
-推荐使用 `react-hook-form` + `zod` 进行表单开发：
-
-```tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-const formSchema = z.object({
-  username: z.string().min(2, '用户名至少 2 个字符'),
-  email: z.string().email('请输入有效的邮箱'),
-});
-
-export default function MyForm() {
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: { username: '', email: '' },
-  });
-
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Input {...form.register('username')} />
-      <Input {...form.register('email')} />
-      <Button type="submit">提交</Button>
-    </form>
-  );
-}
+```bash
+# 查看初始化脚本
+cat scripts/init-database.sql
 ```
 
-### 6. 数据获取
+### 5. 启动开发服务器
 
-**服务端组件（推荐）**
-
-```tsx
-// src/app/posts/page.tsx
-async function getPosts() {
-  const res = await fetch('https://api.example.com/posts', {
-    cache: 'no-store', // 或 'force-cache'
-  });
-  return res.json();
-}
-
-export default async function PostsPage() {
-  const posts = await getPosts();
-
-  return (
-    <div>
-      {posts.map(post => (
-        <div key={post.id}>{post.title}</div>
-      ))}
-    </div>
-  );
-}
+```bash
+pnpm dev
 ```
 
-**客户端组件**
+访问 http://localhost:5000
 
-```tsx
-'use client';
+## 🚀 部署
 
-import { useEffect, useState } from 'react';
+### 部署到 Vercel（推荐）
 
-export default function ClientComponent() {
-  const [data, setData] = useState(null);
+#### 快速部署
 
-  useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(setData);
-  }, []);
+```bash
+# 1. 检查部署准备状态
+pnpm check:deploy
 
-  return <div>{JSON.stringify(data)}</div>;
-}
+# 2. 一键部署到 Vercel
+pnpm deploy
 ```
 
-## 常见开发场景
+#### 详细步骤
 
-### 添加新页面
+1. **推送到 GitHub**
 
-1. 在 `src/app/` 下创建文件夹和 `page.tsx`
-2. 使用 shadcn 组件构建 UI
-3. 根据需要添加 `layout.tsx` 和 `loading.tsx`
-
-### 创建业务组件
-
-1. 在 `src/components/` 下创建组件文件（非 UI 组件）
-2. 优先组合使用 `src/components/ui/` 中的基础组件
-3. 使用 TypeScript 定义 Props 类型
-
-### 添加全局状态
-
-推荐使用 React Context 或 Zustand：
-
-```tsx
-// src/lib/store.ts
-import { create } from 'zustand';
-
-interface Store {
-  count: number;
-  increment: () => void;
-}
-
-export const useStore = create<Store>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-}));
+```bash
+git add .
+git commit -m "feat: 准备部署"
+git push
 ```
 
-### 集成数据库
+2. **在 Vercel 上配置**
 
-推荐使用 Prisma 或 Drizzle ORM，在 `src/lib/db.ts` 中配置。
+- 访问 https://vercel.com
+- 连接你的 GitHub 仓库
+- 配置环境变量（见下方）
+- 点击 Deploy
 
-## 技术栈
+3. **配置环境变量**
 
-- **框架**: Next.js 16.1.1 (App Router)
-- **UI 组件**: shadcn/ui (基于 Radix UI)
-- **样式**: Tailwind CSS v4
-- **表单**: React Hook Form + Zod
-- **图标**: Lucide React
-- **字体**: Geist Sans & Geist Mono
-- **包管理器**: pnpm 9+
-- **TypeScript**: 5.x
+在 Vercel Dashboard → Settings → Environment Variables 中添加：
 
-## 参考文档
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-- [Next.js 官方文档](https://nextjs.org/docs)
-- [shadcn/ui 组件文档](https://ui.shadcn.com)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [React Hook Form](https://react-hook-form.com)
+详细文档请查看：
+- [Vercel 快速开始](docs/vercel-quickstart.md)
+- [部署检查清单](docs/vercel-deployment-checklist.md)
+- [环境变量指南](docs/environment-variables-guide.md)
 
-## 重要提示
+### 手动部署
 
-1. **必须使用 pnpm** 作为包管理器
-2. **优先使用 shadcn/ui 组件** 而不是从零开发基础组件
-3. **遵循 Next.js App Router 规范**，正确区分服务端/客户端组件
-4. **使用 TypeScript** 进行类型安全开发
-5. **使用 `@/` 路径别名** 导入模块（已配置）
+```bash
+# 构建
+pnpm run build
+
+# 启动生产服务器
+pnpm start
+```
+
+## 📁 项目结构
+
+```
+├── src/
+│   ├── app/              # 页面路由
+│   │   ├── page.tsx      # 数据看板
+│   │   ├── projects/     # 项目管理
+│   │   ├── clients/      # 客户管理
+│   │   ├── cases/        # 案例展示
+│   │   ├── designers/    # 设计师管理
+│   │   └── settings/     # 系统设置
+│   ├── components/       # 组件
+│   │   ├── ui/          # shadcn/ui 组件
+│   │   └── layout/      # 布局组件
+│   ├── storage/         # 数据存储
+│   │   └── database/    # 数据库相关
+│   ├── hooks/           # 自定义 Hooks
+│   ├── lib/             # 工具库
+│   └── types/           # 类型定义
+├── docs/               # 文档
+├── scripts/            # 脚本
+└── public/             # 静态资源
+```
+
+## 🔧 开发命令
+
+```bash
+# 开发环境
+pnpm dev
+
+# 构建
+pnpm run build
+
+# 生产环境
+pnpm start
+
+# 代码检查
+pnpm lint
+
+# 类型检查
+pnpm ts-check
+
+# 部署检查
+pnpm check:deploy
+
+# 部署到 Vercel
+pnpm deploy
+```
+
+## 📚 数据库
+
+本项目使用 Supabase 作为数据库。
+
+### 初始化数据库
+
+在 Supabase Dashboard SQL Editor 中执行：
+
+```bash
+# 完整初始化脚本
+cat scripts/init-database.sql
+
+# 表结构修复脚本
+cat scripts/fix-users-table.sql
+```
+
+### 数据库表
+
+- `studio_info` - 工作室信息
+- `users` - 用户（管理员、设计师）
+- `clients` - 客户信息
+- `designers` - 设计师信息
+- `projects` - 项目信息
+- `project_phases` - 项目阶段进度
+- `design_cases` - 设计案例
+- `follow_ups` - 跟进记录
+- `health_check` - 健康检查
+
+详细文档：[AGENTS.md](AGENTS.md)
+
+## 🔐 环境变量
+
+| 变量名 | 说明 | 是否必需 |
+|--------|------|----------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名公钥 | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务端密钥 | ✅ |
+
+详细配置说明：[环境变量指南](docs/environment-variables-guide.md)
+
+## 🐛 故障排查
+
+### 数据库连接失败
+
+1. 检查环境变量是否正确配置
+2. 确认 Supabase 项目是否正常运行
+3. 验证 RLS 策略配置
+
+### 构建失败
+
+```bash
+# 本地测试构建
+pnpm run build
+
+# 查看详细错误
+pnpm run build 2>&1 | tail -n 50
+```
+
+### 部署问题
+
+```bash
+# 运行部署前检查
+pnpm check:deploy
+
+# 查看部署日志
+vercel logs
+```
+
+## 📖 文档
+
+- [AGENTS.md](AGENTS.md) - 项目详细说明
+- [Vercel 快速开始](docs/vercel-quickstart.md) - 部署指南
+- [部署检查清单](docs/vercel-deployment-checklist.md) - 部署前检查
+- [环境变量指南](docs/environment-variables-guide.md) - 环境配置
+- [部署总结](docs/vercel-deployment-summary.md) - 部署配置说明
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📄 许可
+
+MIT License
+
+---
+
+**祝你使用愉快！** 🎉
