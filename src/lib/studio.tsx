@@ -46,25 +46,35 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // 2. 尝试从数据库同步（如果有数据库支持）
-        try {
-          const { studioInfoService } = await import('@/storage/database/services');
-          const dbStudioInfo = await studioInfoService.get();
-          if (dbStudioInfo) {
-            setStudioInfo({
-              name: dbStudioInfo.name || DEFAULT_STUDIO_INFO.name,
-              address: dbStudioInfo.address || '',
-              phone: dbStudioInfo.phone || '',
-              email: dbStudioInfo.email || '',
-            });
-            // 同步到 localStorage
-            localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify(dbStudioInfo));
+        // 2. 异步尝试从数据库同步（非阻塞，2秒超时）
+        const syncDbPromise = (async () => {
+          try {
+            const { studioInfoService } = await import('@/storage/database/services');
+            const dbStudioInfo = await studioInfoService.get();
+            if (dbStudioInfo) {
+              setStudioInfo({
+                name: dbStudioInfo.name || DEFAULT_STUDIO_INFO.name,
+                address: dbStudioInfo.address || '',
+                phone: dbStudioInfo.phone || '',
+                email: dbStudioInfo.email || '',
+              });
+              // 同步到 localStorage
+              localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify(dbStudioInfo));
+            }
+          } catch (dbError) {
+            console.log('数据库同步失败，使用本地存储:', dbError);
           }
-        } catch (dbError) {
-          // 数据库不可用时不报错，继续使用 localStorage
-          console.log('数据库不可用，使用本地存储:', dbError);
-        }
+        })();
+
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Database sync timeout')), 2000);
+        });
+
+        Promise.race([syncDbPromise, timeoutPromise]).catch(() => {
+          console.log('数据库同步超时，使用本地存储');
+        });
       } finally {
+        // 立即设置加载完成
         setIsLoading(false);
       }
     }

@@ -147,14 +147,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // 3. 尝试初始化数据库（如果可用）
-        try {
-          const { initAppDatabase } = await import('@/storage/database/init');
-          await initAppDatabase();
-        } catch (dbError) {
-          console.log('数据库初始化失败，使用本地存储:', dbError);
-        }
+        // 3. 异步尝试初始化数据库（非阻塞）
+        // 使用 Promise.race 设置 3 秒超时
+        const initDbPromise = (async () => {
+          try {
+            const { initAppDatabase } = await import('@/storage/database/init');
+            await initAppDatabase();
+          } catch (dbError) {
+            console.log('数据库初始化失败，使用本地存储:', dbError);
+          }
+        })();
+
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Database init timeout')), 3000);
+        });
+
+        Promise.race([initDbPromise, timeoutPromise]).catch(() => {
+          console.log('数据库初始化超时，使用本地存储');
+        });
       } finally {
+        // 立即设置加载完成，不等待数据库初始化
         setIsLoading(false);
       }
     }
