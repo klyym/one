@@ -131,10 +131,21 @@ const syncToSupabase = async (
       case 'addProject': {
         console.log('📝 [Supabase Sync] 正在创建项目...', data);
         // 映射 ID
+        const mappedClientId = getMappedId(data.clientId, idMap);
+        const mappedDesignerId = getMappedId(data.designerId, idMap);
+
+        // 警告：如果找不到映射
+        if (!mappedClientId) {
+          console.warn('⚠️ [Supabase Sync] 找不到客户 ID 映射，将客户设为 null:', data.clientId);
+        }
+        if (!mappedDesignerId) {
+          console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将设计师设为 null:', data.designerId);
+        }
+
         const mappedData = {
           ...data,
-          client_id: getMappedId(data.clientId, idMap) || data.clientId,
-          designer_id: getMappedId(data.designerId, idMap) || data.designerId,
+          client_id: mappedClientId || null,
+          designer_id: mappedDesignerId || null,
         };
         console.log('🗺️ [Supabase Sync] ID 映射后:', mappedData);
         result = await services.projectService.create(mappedData);
@@ -149,10 +160,22 @@ const syncToSupabase = async (
       }
       case 'updateProject': {
         console.log('📝 [Supabase Sync] 正在更新项目...', data.id, data);
+        // 映射 ID
+        const mappedClientId = getMappedId(data.clientId, idMap);
+        const mappedDesignerId = getMappedId(data.designerId, idMap);
+
+        // 警告：如果找不到映射
+        if (!mappedClientId) {
+          console.warn('⚠️ [Supabase Sync] 找不到客户 ID 映射，将客户设为 null:', data.clientId);
+        }
+        if (!mappedDesignerId) {
+          console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将设计师设为 null:', data.designerId);
+        }
+
         const mappedData = {
           ...data,
-          client_id: getMappedId(data.clientId, idMap) || data.clientId,
-          designer_id: getMappedId(data.designerId, idMap) || data.designerId,
+          client_id: mappedClientId || null,
+          designer_id: mappedDesignerId || null,
         };
         const projectId = getMappedId(data.id, idMap) || data.id;
         result = await services.projectService.update(projectId, mappedData);
@@ -276,10 +299,22 @@ const syncToSupabase = async (
       }
       case 'addFollowUp': {
         console.log('📝 [Supabase Sync] 正在创建跟进记录...', data);
+        // 映射 ID
+        const mappedClientId = getMappedId(data.clientId, idMap);
+        const mappedDesignerId = getMappedId(data.designerId, idMap);
+
+        // 警告：如果找不到映射
+        if (!mappedClientId) {
+          console.warn('⚠️ [Supabase Sync] 找不到客户 ID 映射，将客户设为 null:', data.clientId);
+        }
+        if (!mappedDesignerId) {
+          console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将跟进人设为 null:', data.designerId);
+        }
+
         const mappedData = {
           ...data,
-          client_id: getMappedId(data.clientId, idMap) || data.clientId,
-          followed_by: getMappedId(data.designerId, idMap) || data.designerId,
+          client_id: mappedClientId || null,
+          followed_by: mappedDesignerId || null,
         };
         result = await services.followUpService.create(mappedData);
         console.log('✅ [Supabase Sync] 跟进记录创建成功:', result);
