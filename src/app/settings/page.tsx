@@ -758,6 +758,41 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* 数据清理 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            数据清理
+          </CardTitle>
+          <CardDescription>清理浏览器本地存储的数据</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <p className="font-medium">清理本地数据</p>
+              <p className="text-sm text-muted-foreground">
+                删除浏览器 localStorage 中的所有数据（项目、客户、设计师、案例等）。
+                这不会影响 Supabase 数据库中的数据。
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (confirm('确定要清理所有本地数据吗？这将删除浏览器中存储的所有项目、客户、设计师等信息。\n\n注意：此操作不可恢复！')) {
+                  // 清理所有 localStorage 数据
+                  localStorage.clear();
+                  // 重新加载页面
+                  window.location.reload();
+                }
+              }}
+            >
+              清理所有本地数据
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 系统信息 */}
       <Card>
         <CardHeader>
