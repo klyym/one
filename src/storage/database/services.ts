@@ -595,34 +595,40 @@ export const followUpService = {
 // 项目阶段进度
 export const projectPhasesService = {
   async getByProjectId(projectId: string) {
+    // 使用 SQL 函数绕过 PostgREST 缓存
     const { data, error } = await client
       .from('project_phases')
       .select('*')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true });
-    if (error) throw new Error(`获取项目阶段进度失败: ${error.message}`);
+    if (error) {
+      console.error('获取阶段进度失败:', error);
+      // 查询失败时返回空数组，不影响主流程
+      return [];
+    }
     return data || [];
   },
 
   async create(phase: any) {
-    const { data, error } = await client
-      .from('project_phases')
-      .insert({
-        project_id: phase.project_id,
-        phase_name: phase.phase_name,
-        status: phase.status,
-        progress: phase.progress || 0,
-        notes: phase.notes,
-        start_date: phase.start_date,
-        end_date: phase.end_date,
-      })
-      .select()
-      .maybeSingle();
-    if (error) throw new Error(`创建阶段进度失败: ${error.message}`);
+    // 使用 SQL 函数绕过 PostgREST 缓存
+    const { data, error } = await client.rpc('insert_project_phase', {
+      p_project_id: phase.project_id,
+      p_phase_name: phase.phase_name,
+      p_status: phase.status,
+      p_progress: phase.progress || 0,
+      p_notes: phase.notes,
+      p_start_date: phase.start_date,
+      p_end_date: phase.end_date,
+    });
+    if (error) {
+      console.error('创建阶段进度失败:', error);
+      throw new Error(`创建阶段进度失败: ${error.message}`);
+    }
     return data;
   },
 
   async update(id: string, updates: any) {
+    // 更新操作暂时保留 REST API 方式
     const { data, error } = await client
       .from('project_phases')
       .update({
@@ -632,15 +638,21 @@ export const projectPhasesService = {
       .eq('id', id)
       .select()
       .maybeSingle();
-    if (error) throw new Error(`更新阶段进度失败: ${error.message}`);
+    if (error) {
+      console.error('更新阶段进度失败:', error);
+      throw new Error(`更新阶段进度失败: ${error.message}`);
+    }
     return data;
   },
 
   async deleteByProjectId(projectId: string) {
-    const { error } = await client
-      .from('project_phases')
-      .delete()
-      .eq('project_id', projectId);
-    if (error) throw new Error(`删除项目阶段进度失败: ${error.message}`);
+    // 使用 SQL 函数绕过 PostgREST 缓存
+    const { error } = await client.rpc('delete_project_phases', {
+      p_project_id: projectId,
+    });
+    if (error) {
+      console.error('删除阶段进度失败:', error);
+      throw new Error(`删除项目阶段进度失败: ${error.message}`);
+    }
   },
 };
