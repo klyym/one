@@ -142,7 +142,7 @@ const syncToSupabase = async (
           console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将设计师设为 null:', data.designerId);
         }
 
-        // 创建映射后的数据，排除 camelCase 的 ID 字段
+        // 创建映射后的数据，排除 camelCase 的 ID 字段和 phases 字段
         const mappedData = {
           name: data.name,
           location: data.location,
@@ -155,7 +155,8 @@ const syncToSupabase = async (
           end_date: data.endDate,
           current_phase: data.currentPhase,
           overall_progress: data.overallProgress,
-          phases: data.phases,
+          // phases 字段存储在 project_phases 表中，不在这里创建
+          // phases: data.phases,
           created_at: data.createdAt,
           updated_at: data.updatedAt,
           client_id: mappedClientId || null,
@@ -186,7 +187,7 @@ const syncToSupabase = async (
           console.warn('⚠️ [Supabase Sync] 找不到设计师 ID 映射，将设计师设为 null:', data.designerId);
         }
 
-        // 创建映射后的数据，排除 camelCase 的 ID 字段
+        // 创建映射后的数据，排除 camelCase 的 ID 字段和 phases 字段
         const { clientId, designerId, createdAt, updatedAt, phases, ...restData } = data;
         const mappedData = {
           ...restData,
@@ -194,7 +195,8 @@ const syncToSupabase = async (
           designer_id: mappedDesignerId || null,
           created_at: createdAt,
           updated_at: updatedAt,
-          phases: phases,
+          // phases 字段存储在 project_phases 表中，不在这里更新
+          // phases: phases,
         };
         const projectId = getMappedId(data.id, idMap) || data.id;
         result = await services.projectService.update(projectId, mappedData);
