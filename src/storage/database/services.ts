@@ -530,6 +530,15 @@ export const caseService = {
 
 // 跟进记录
 export const followUpService = {
+  async getAll() {
+    const { data, error } = await client
+      .from('follow_ups')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(`获取跟进记录失败: ${error.message}`);
+    return data || [];
+  },
+
   async getByClientId(clientId: string) {
     const { data, error } = await client
       .from('follow_ups')

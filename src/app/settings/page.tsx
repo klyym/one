@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Bell, Shield, Palette, CheckCircle, AlertCircle, Eye, EyeOff, Key, User, Mail, Save, RefreshCw, Building2, Phone, MapPin } from 'lucide-react';
+import { Settings, Bell, Shield, Palette, CheckCircle, AlertCircle, Eye, EyeOff, Key, User, Mail, Save, RefreshCw, Building2, Phone, MapPin, Download, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useStudio } from '@/lib/studio';
 import { Separator } from '@/components/ui/separator';
@@ -758,11 +758,168 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* 数据同步 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            数据同步
+          </CardTitle>
+          <CardDescription>从 Supabase 云数据库加载数据</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <p className="font-medium">从 Supabase 重新加载数据</p>
+              <p className="text-sm text-muted-foreground">
+                从 Supabase 云数据库加载所有数据并覆盖本地数据。这将替换浏览器中存储的所有项目、客户、设计师、案例等信息。
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (confirm('确定要从 Supabase 重新加载数据吗？这将覆盖本地所有数据！')) {
+                  try {
+                    // 动态加载数据库服务
+                    const services = await import('@/storage/database/services');
+                    const { clientService, designerService, projectService, caseService, followUpService } = services;
+
+                    // 加载所有数据
+                    const [supabaseClients, supabaseDesigners, supabaseProjects, supabaseCases, supabaseFollowUps] = await Promise.all([
+                      clientService.getAll(),
+                      designerService.getAll(),
+                      projectService.getAll(),
+                      caseService.getAll(),
+                      followUpService.getAll(),
+                    ]);
+
+                    console.log('📦 [Settings] Supabase 数据加载完成:', {
+                      clients: supabaseClients?.length || 0,
+                      designers: supabaseDesigners?.length || 0,
+                      projects: supabaseProjects?.length || 0,
+                      cases: supabaseCases?.length || 0,
+                      followUps: supabaseFollowUps?.length || 0,
+                    });
+
+                    // 保存到 localStorage
+                    const STORAGE_KEYS = {
+                      clients: 'studio_clients',
+                      designers: 'studio_designers',
+                      projects: 'studio_projects',
+                      cases: 'studio_cases',
+                      followUps: 'studio_followups',
+                    };
+
+                    if (supabaseClients && supabaseClients.length > 0) {
+                      const localClients = supabaseClients.map((c: any) => ({
+                        id: c.id,
+                        name: c.name,
+                        phone: c.phone,
+                        email: c.email,
+                        address: c.address,
+                        company: c.company_name,
+                        notes: c.notes,
+                        totalProjects: 0,
+                        totalSpent: 0,
+                        createdAt: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                        lastContactAt: undefined,
+                      }));
+                      localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(localClients));
+                    }
+
+                    if (supabaseDesigners && supabaseDesigners.length > 0) {
+                      const localDesigners = supabaseDesigners.map((d: any) => ({
+                        id: d.id,
+                        name: d.name,
+                        title: d.position,
+                        specialty: d.specialties ? d.specialties.split(',').map((s: string) => s.trim()) : [],
+                        phone: d.phone,
+                        email: d.email,
+                        rating: d.rating || 0,
+                        bio: d.bio,
+                        activeProjects: 0,
+                        completedProjects: 0,
+                        joinedAt: new Date().toISOString().split('T')[0],
+                      }));
+                      localStorage.setItem(STORAGE_KEYS.designers, JSON.stringify(localDesigners));
+                    }
+
+                    if (supabaseProjects && supabaseProjects.length > 0) {
+                      const localProjects = supabaseProjects.map((p: any) => ({
+                        id: p.id,
+                        name: p.name,
+                        clientId: p.client_id,
+                        designerId: p.designer_id,
+                        status: p.status,
+                        priority: p.priority,
+                        budget: p.budget || 0,
+                        area: p.area || 0,
+                        location: p.location || '',
+                        style: p.style || '',
+                        startDate: p.start_date?.split('T')[0] || '',
+                        endDate: p.end_date?.split('T')[0] || '',
+                        currentPhase: p.current_phase || '待开始',
+                        overallProgress: p.overall_progress || 0,
+                        phases: p.phases || [],
+                        createdAt: p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                        updatedAt: p.updated_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                      }));
+                      localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(localProjects));
+                    }
+
+                    if (supabaseCases && supabaseCases.length > 0) {
+                      const localCases = supabaseCases.map((c: any) => ({
+                        id: c.id,
+                        name: c.name,
+                        style: c.style || '',
+                        area: c.area || 0,
+                        address: c.address || '',
+                        images: c.images || [],
+                        tags: c.tags ? c.tags.split(',').map((t: string) => t.trim()) : [],
+                        featured: c.featured || false,
+                        views: c.views || 0,
+                        likes: c.likes || 0,
+                        createdAt: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                      }));
+                      localStorage.setItem(STORAGE_KEYS.cases, JSON.stringify(localCases));
+                    }
+
+                    if (supabaseFollowUps && supabaseFollowUps.length > 0) {
+                      const localFollowUps = supabaseFollowUps.map((f: any) => ({
+                        id: f.id,
+                        clientId: f.client_id,
+                        designerId: f.followed_by,
+                        type: f.type,
+                        content: f.content,
+                        nextAction: f.next_plan,
+                        nextDate: f.next_date?.split('T')[0] || '',
+                        createdAt: f.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                      }));
+                      localStorage.setItem(STORAGE_KEYS.followUps, JSON.stringify(localFollowUps));
+                    }
+
+                    // 重新加载页面
+                    alert('数据加载成功！页面将重新加载。');
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('❌ [Settings] 从 Supabase 加载数据失败:', error);
+                    alert('数据加载失败，请检查控制台日志。');
+                  }
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              从 Supabase 重新加载
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 数据清理 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
+            <Trash2 className="h-5 w-5" />
             数据清理
           </CardTitle>
           <CardDescription>清理浏览器本地存储的数据</CardDescription>
@@ -787,6 +944,7 @@ export default function SettingsPage() {
                 }
               }}
             >
+              <Trash2 className="mr-2 h-4 w-4" />
               清理所有本地数据
             </Button>
           </div>

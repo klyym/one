@@ -997,6 +997,187 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // 从 Supabase 加载数据（应用启动时）
+  useEffect(() => {
+    const loadFromSupabase = async () => {
+      try {
+        console.log('🔄 [Store] 开始从 Supabase 加载数据...');
+        const services = await loadDbServices();
+
+        if (!services) {
+          console.warn('⚠️ [Store] 数据库服务未加载，跳过同步');
+          return;
+        }
+
+        // 加载所有数据
+        const [supabaseClients, supabaseDesigners, supabaseProjects, supabaseCases, supabaseFollowUps] = await Promise.all([
+          services.clientService.getAll(),
+          services.designerService.getAll(),
+          services.projectService.getAll(),
+          services.caseService.getAll(),
+          services.followUpService.getAll(),
+        ]);
+
+        console.log('📦 [Store] Supabase 数据加载完成:', {
+          clients: supabaseClients?.length || 0,
+          designers: supabaseDesigners?.length || 0,
+          projects: supabaseProjects?.length || 0,
+          cases: supabaseCases?.length || 0,
+          followUps: supabaseFollowUps?.length || 0,
+        });
+
+        // 如果 Supabase 中有数据，则覆盖本地数据
+        if (supabaseClients && supabaseClients.length > 0) {
+          const localClients = supabaseClients.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            email: c.email,
+            address: c.address,
+            company: c.company_name,
+            notes: c.notes,
+            totalProjects: 0,
+            totalSpent: 0,
+            createdAt: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            lastContactAt: undefined,
+          }));
+          setClients(localClients);
+          saveToStorage(STORAGE_KEYS.clients, localClients);
+
+          // 建立 ID 映射（UUID 映射到自己）
+          const newIdMap = { ...idMap };
+          localClients.forEach((client: any) => {
+            newIdMap[client.id] = client.id;
+          });
+          setIdMap(newIdMap);
+          saveIdMap(newIdMap);
+        }
+
+        if (supabaseDesigners && supabaseDesigners.length > 0) {
+          const localDesigners = supabaseDesigners.map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            title: d.position,
+            specialty: d.specialties ? d.specialties.split(',').map((s: string) => s.trim()) : [],
+            phone: d.phone,
+            email: d.email,
+            rating: d.rating || 0,
+            bio: d.bio,
+            activeProjects: 0,
+            completedProjects: 0,
+            joinedAt: new Date().toISOString().split('T')[0],
+          }));
+          setDesigners(localDesigners);
+          saveToStorage(STORAGE_KEYS.designers, localDesigners);
+
+          // 建立 ID 映射
+          const newIdMap = { ...idMap };
+          localDesigners.forEach((designer: any) => {
+            newIdMap[designer.id] = designer.id;
+          });
+          setIdMap(newIdMap);
+          saveIdMap(newIdMap);
+        }
+
+        if (supabaseProjects && supabaseProjects.length > 0) {
+          const localProjects = supabaseProjects.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            clientId: p.client_id,
+            designerId: p.designer_id,
+            status: p.status,
+            priority: p.priority,
+            budget: p.budget || 0,
+            area: p.area || 0,
+            location: p.location || '',
+            style: p.style || '',
+            startDate: p.start_date?.split('T')[0] || '',
+            endDate: p.end_date?.split('T')[0] || '',
+            currentPhase: p.current_phase || '待开始',
+            overallProgress: p.overall_progress || 0,
+            phases: p.phases || [],
+            createdAt: p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            updatedAt: p.updated_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          }));
+          setProjects(localProjects);
+          saveToStorage(STORAGE_KEYS.projects, localProjects);
+
+          // 建立 ID 映射
+          const newIdMap = { ...idMap };
+          localProjects.forEach((project: any) => {
+            newIdMap[project.id] = project.id;
+          });
+          setIdMap(newIdMap);
+          saveIdMap(newIdMap);
+        }
+
+        if (supabaseCases && supabaseCases.length > 0) {
+          const localCases = supabaseCases.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            style: c.style || '',
+            area: c.area || 0,
+            address: c.address || '',
+            images: c.images || [],
+            tags: c.tags ? c.tags.split(',').map((t: string) => t.trim()) : [],
+            featured: c.featured || false,
+            views: c.views || 0,
+            likes: c.likes || 0,
+            createdAt: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          }));
+          setCases(localCases);
+          saveToStorage(STORAGE_KEYS.cases, localCases);
+
+          // 建立 ID 映射
+          const newIdMap = { ...idMap };
+          localCases.forEach((caseItem: any) => {
+            newIdMap[caseItem.id] = caseItem.id;
+          });
+          setIdMap(newIdMap);
+          saveIdMap(newIdMap);
+        }
+
+        if (supabaseFollowUps && supabaseFollowUps.length > 0) {
+          const localFollowUps = supabaseFollowUps.map((f: any) => ({
+            id: f.id,
+            clientId: f.client_id,
+            designerId: f.followed_by,
+            type: f.type,
+            content: f.content,
+            nextAction: f.next_plan,
+            nextDate: f.next_date?.split('T')[0] || '',
+            createdAt: f.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          }));
+          setFollowUps(localFollowUps);
+          saveToStorage(STORAGE_KEYS.followUps, localFollowUps);
+
+          // 建立 ID 映射
+          const newIdMap = { ...idMap };
+          localFollowUps.forEach((followUp: any) => {
+            newIdMap[followUp.id] = followUp.id;
+          });
+          setIdMap(newIdMap);
+          saveIdMap(newIdMap);
+        }
+
+        console.log('✅ [Store] 数据从 Supabase 加载完成');
+      } catch (error) {
+        console.error('❌ [Store] 从 Supabase 加载数据失败:', error);
+      }
+    };
+
+    // 只在客户端且 localStorage 为空时加载
+    if (typeof window !== 'undefined') {
+      const hasLocalData = localStorage.getItem(STORAGE_KEYS.clients) ||
+                          localStorage.getItem(STORAGE_KEYS.designers) ||
+                          localStorage.getItem(STORAGE_KEYS.projects);
+
+      if (!hasLocalData) {
+        loadFromSupabase();
+      }
+    }
+  }, []); // 只在组件挂载时执行一次
+
   return (
     <StoreContext.Provider
       value={{
