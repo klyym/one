@@ -165,6 +165,11 @@ const syncToSupabase = async (
         if (projectId) {
           result = await services.projectService.delete(projectId);
           console.log('✅ [Supabase Sync] 项目删除成功');
+          // 从 ID 映射表移除
+          const newMap = { ...idMap };
+          delete newMap[data.id];
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 移除项目 ID 映射:', data.id);
         } else {
           console.warn('⚠️ [Supabase Sync] 跳过删除项目（找不到 ID 映射）:', data.id);
         }
@@ -249,7 +254,8 @@ const syncToSupabase = async (
       }
       case 'updateCase':
         console.log('📝 [Supabase Sync] 正在更新案例...', data.id, data);
-        result = await services.caseService.update(data.id, data);
+        const caseId = getMappedId(data.id, idMap) || data.id;
+        result = await services.caseService.update(caseId, data);
         console.log('✅ [Supabase Sync] 案例更新成功:', result);
         break;
       case 'deleteCase': {
@@ -258,6 +264,11 @@ const syncToSupabase = async (
         if (caseId) {
           result = await services.caseService.delete(caseId);
           console.log('✅ [Supabase Sync] 案例删除成功');
+          // 从 ID 映射表移除
+          const newMap = { ...idMap };
+          delete newMap[data.id];
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 移除案例 ID 映射:', data.id);
         } else {
           console.warn('⚠️ [Supabase Sync] 跳过删除案例（找不到 ID 映射）:', data.id);
         }
@@ -285,6 +296,11 @@ const syncToSupabase = async (
         if (followUpId) {
           result = await services.followUpService.delete(followUpId);
           console.log('✅ [Supabase Sync] 跟进记录删除成功');
+          // 从 ID 映射表移除
+          const newMap = { ...idMap };
+          delete newMap[data.id];
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 移除跟进记录 ID 映射:', data.id);
         } else {
           console.warn('⚠️ [Supabase Sync] 跳过删除跟进记录（找不到 ID 映射）:', data.id);
         }
