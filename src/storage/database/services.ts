@@ -8,6 +8,30 @@ import { getSupabaseClient } from './supabase-client';
 
 const client = getSupabaseClient();
 
+/**
+ * 初始化数据库
+ * 在应用启动时调用，创建必要的初始数据
+ */
+export async function initializeDatabase() {
+  console.log('🔧 [Database] 开始初始化数据库...');
+  
+  try {
+    // 初始化工作室信息
+    await studioInfoService.initialize();
+    console.log('✅ [Database] 工作室信息初始化完成');
+    
+    // 初始化用户数据
+    await userService.initialize();
+    console.log('✅ [Database] 用户数据初始化完成');
+    
+    console.log('🎉 [Database] 数据库初始化成功！');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [Database] 数据库初始化失败:', error);
+    return { success: false, error };
+  }
+}
+
 // 字段映射工具函数
 const mapClientToDb = {
   // Client 映射

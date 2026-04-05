@@ -69,93 +69,100 @@ const loadDbServices = async () => {
 // 同步数据到 Supabase（异步，不阻塞）
 const syncToSupabase = async (action: string, data: any) => {
   console.log('🔄 [Supabase Sync] 开始同步:', action, data);
+  console.log('🔍 [Supabase Sync] 当前环境:', typeof window !== 'undefined' ? '客户端' : '服务端');
   setSyncStatus('syncing', `正在同步: ${action}`);
 
   try {
+    console.log('📦 [Supabase Sync] 正在加载数据库服务...');
     const services = await loadDbServices();
+    
     if (!services) {
       console.error('❌ [Supabase Sync] 数据库服务未加载');
-      setSyncStatus('error', '数据库服务未加载');
+      setSyncStatus('error', '数据库服务未加载，请检查配置');
       return;
     }
+    
     console.log('✅ [Supabase Sync] 数据库服务已加载');
+    console.log('📋 [Supabase Sync] 可用的服务:', Object.keys(services));
 
+    let result;
     switch (action) {
       case 'addProject':
         console.log('📝 [Supabase Sync] 正在创建项目...', data);
-        await services.projectService.create(data);
-        console.log('✅ [Supabase Sync] 项目创建成功');
+        result = await services.projectService.create(data);
+        console.log('✅ [Supabase Sync] 项目创建成功:', result);
         break;
       case 'updateProject':
         console.log('📝 [Supabase Sync] 正在更新项目...', data.id, data);
-        await services.projectService.update(data.id, data);
-        console.log('✅ [Supabase Sync] 项目更新成功');
+        result = await services.projectService.update(data.id, data);
+        console.log('✅ [Supabase Sync] 项目更新成功:', result);
         break;
       case 'deleteProject':
         console.log('📝 [Supabase Sync] 正在删除项目...', data.id);
-        await services.projectService.delete(data.id);
-        console.log('✅ [Supabase Sync] 项目删除成功');
+        result = await services.projectService.delete(data.id);
+        console.log('✅ [Supabase Sync] 项目删除成功:', result);
         break;
       case 'addClient':
         console.log('📝 [Supabase Sync] 正在创建客户...', data);
-        await services.clientService.create(data);
-        console.log('✅ [Supabase Sync] 客户创建成功');
+        result = await services.clientService.create(data);
+        console.log('✅ [Supabase Sync] 客户创建成功:', result);
         break;
       case 'updateClient':
         console.log('📝 [Supabase Sync] 正在更新客户...', data.id, data);
-        await services.clientService.update(data.id, data);
-        console.log('✅ [Supabase Sync] 客户更新成功');
+        result = await services.clientService.update(data.id, data);
+        console.log('✅ [Supabase Sync] 客户更新成功:', result);
         break;
       case 'deleteClient':
         console.log('📝 [Supabase Sync] 正在删除客户...', data.id);
-        await services.clientService.delete(data.id);
-        console.log('✅ [Supabase Sync] 客户删除成功');
+        result = await services.clientService.delete(data.id);
+        console.log('✅ [Supabase Sync] 客户删除成功:', result);
         break;
       case 'addDesigner':
         console.log('📝 [Supabase Sync] 正在创建设计师...', data);
-        await services.designerService.create(data);
-        console.log('✅ [Supabase Sync] 设计师创建成功');
+        result = await services.designerService.create(data);
+        console.log('✅ [Supabase Sync] 设计师创建成功:', result);
         break;
       case 'updateDesigner':
         console.log('📝 [Supabase Sync] 正在更新设计师...', data.id, data);
-        await services.designerService.update(data.id, data);
-        console.log('✅ [Supabase Sync] 设计师更新成功');
+        result = await services.designerService.update(data.id, data);
+        console.log('✅ [Supabase Sync] 设计师更新成功:', result);
         break;
       case 'deleteDesigner':
         console.log('📝 [Supabase Sync] 正在删除设计师...', data.id);
-        await services.designerService.delete(data.id);
-        console.log('✅ [Supabase Sync] 设计师删除成功');
+        result = await services.designerService.delete(data.id);
+        console.log('✅ [Supabase Sync] 设计师删除成功:', result);
         break;
       case 'addCase':
         console.log('📝 [Supabase Sync] 正在创建案例...', data);
-        await services.caseService.create(data);
-        console.log('✅ [Supabase Sync] 案例创建成功');
+        result = await services.caseService.create(data);
+        console.log('✅ [Supabase Sync] 案例创建成功:', result);
         break;
       case 'updateCase':
         console.log('📝 [Supabase Sync] 正在更新案例...', data.id, data);
-        await services.caseService.update(data.id, data);
-        console.log('✅ [Supabase Sync] 案例更新成功');
+        result = await services.caseService.update(data.id, data);
+        console.log('✅ [Supabase Sync] 案例更新成功:', result);
         break;
       case 'deleteCase':
         console.log('📝 [Supabase Sync] 正在删除案例...', data.id);
-        await services.caseService.delete(data.id);
-        console.log('✅ [Supabase Sync] 案例删除成功');
+        result = await services.caseService.delete(data.id);
+        console.log('✅ [Supabase Sync] 案例删除成功:', result);
         break;
       case 'addFollowUp':
         console.log('📝 [Supabase Sync] 正在创建跟进记录...', data);
-        await services.followUpService.create(data);
-        console.log('✅ [Supabase Sync] 跟进记录创建成功');
+        result = await services.followUpService.create(data);
+        console.log('✅ [Supabase Sync] 跟进记录创建成功:', result);
         break;
       case 'deleteFollowUp':
         console.log('📝 [Supabase Sync] 正在删除跟进记录...', data.id);
-        await services.followUpService.delete(data.id);
-        console.log('✅ [Supabase Sync] 跟进记录删除成功');
+        result = await services.followUpService.delete(data.id);
+        console.log('✅ [Supabase Sync] 跟进记录删除成功:', result);
         break;
     }
-    console.log('🎉 [Supabase Sync] 同步完成:', action);
+    console.log('🎉 [Supabase Sync] 同步完成:', action, '结果:', result);
     setSyncStatus('success', `${action} 同步成功`);
   } catch (error) {
     console.error(`❌ [Supabase Sync] 同步失败 (${action}):`, error);
+    console.error('❌ [Supabase Sync] 错误详情:', error instanceof Error ? error.stack : error);
     setSyncStatus('error', `${action} 同步失败: ${error instanceof Error ? error.message : '未知错误'}`);
     // 不抛出错误，让 localStorage 作为主要存储
   }
