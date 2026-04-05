@@ -46,25 +46,23 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // 2. 尝试从数据库同步（仅在服务端）
-        if (typeof window === 'undefined') {
-          try {
-            const { dbAdapter } = await import('@/storage/database/database-adapter');
-            const dbStudioInfo = await dbAdapter.getStudioInfo();
-            if (dbStudioInfo) {
-              setStudioInfo({
-                name: dbStudioInfo.name || DEFAULT_STUDIO_INFO.name,
-                address: dbStudioInfo.address || '',
-                phone: dbStudioInfo.phone || '',
-                email: dbStudioInfo.email || '',
-              });
-              // 同步到 localStorage
-              localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify(dbStudioInfo));
-            }
-          } catch (dbError) {
-            // 数据库不可用时不报错，继续使用 localStorage
-            console.log('数据库不可用，使用本地存储:', dbError);
+        // 2. 尝试从数据库同步（如果有数据库支持）
+        try {
+          const { studioInfoService } = await import('@/storage/database/services');
+          const dbStudioInfo = await studioInfoService.get();
+          if (dbStudioInfo) {
+            setStudioInfo({
+              name: dbStudioInfo.name || DEFAULT_STUDIO_INFO.name,
+              address: dbStudioInfo.address || '',
+              phone: dbStudioInfo.phone || '',
+              email: dbStudioInfo.email || '',
+            });
+            // 同步到 localStorage
+            localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify(dbStudioInfo));
           }
+        } catch (dbError) {
+          // 数据库不可用时不报错，继续使用 localStorage
+          console.log('数据库不可用，使用本地存储:', dbError);
         }
       } finally {
         setIsLoading(false);
@@ -82,15 +80,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify(updatedInfo));
       setStudioInfo(updatedInfo);
 
-      // 2. 尝试同步到数据库（仅在服务端）
-      if (typeof window === 'undefined') {
-        try {
-          const { dbAdapter } = await import('@/storage/database/database-adapter');
-          await dbAdapter.updateStudioInfo(updatedInfo);
-        } catch (dbError) {
-          console.warn('数据库同步失败，仅更新本地存储:', dbError);
-          // 不影响操作，数据库不可用时仍能正常使用
-        }
+      // 2. 尝试同步到数据库
+      try {
+        const { studioInfoService } = await import('@/storage/database/services');
+        await studioInfoService.update(updatedInfo);
+      } catch (dbError) {
+        console.warn('数据库同步失败，仅更新本地存储:', dbError);
+        // 不影响操作，数据库不可用时仍能正常使用
       }
 
       setError(null);
