@@ -9,6 +9,9 @@ echo "Installing dependencies..."
 pnpm install --prefer-frozen-lockfile --prefer-offline --loglevel debug --reporter=append-only
 
 echo "Building the Next.js project..."
-pnpm next build
+pnpm next build || {
+  echo "Next.js build failed!"
+  exit 1
+}
 
 echo "Build completed successfully!"
