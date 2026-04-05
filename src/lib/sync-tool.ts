@@ -58,6 +58,10 @@ export async function syncAllDataToSupabase() {
     let successCount = 0;
     let failCount = 0;
     
+    // ID 映射表：旧 ID -> 新 UUID
+    const clientIdMap = new Map<string, string>();
+    const designerIdMap = new Map<string, string>();
+    
     // 同步客户
     const clients = readFromStorage(STORAGE_KEYS.clients);
     console.log('📊 [SyncTool] 从 localStorage 读取到客户:', clients?.length || 0);
@@ -65,9 +69,13 @@ export async function syncAllDataToSupabase() {
       console.log(`📝 [SyncTool] 开始同步 ${clients.length} 个客户...`);
       for (const client of clients) {
         try {
-          console.log(`📝 [SyncTool] 同步客户: ${client.name}`);
+          console.log(`📝 [SyncTool] 同步客户: ${client.name} (ID: ${client.id})`);
           const result = await services.clientService.create(client);
           console.log(`✅ [SyncTool] 客户同步成功: ${client.name}`, result);
+          if (result?.id) {
+            clientIdMap.set(client.id, result.id);
+            console.log(`🗺️ [SyncTool] 映射 ID: ${client.id} -> ${result.id}`);
+          }
           successCount++;
         } catch (error: any) {
           failCount++;
@@ -83,6 +91,8 @@ export async function syncAllDataToSupabase() {
       console.log('⚠️ [SyncTool] 没有客户数据需要同步');
     }
     
+    console.log('🗺️ [SyncTool] 客户 ID 映射表:', Object.fromEntries(clientIdMap));
+    
     // 同步设计师
     const designers = readFromStorage(STORAGE_KEYS.designers);
     console.log('📊 [SyncTool] 从 localStorage 读取到设计师:', designers?.length || 0);
@@ -90,9 +100,13 @@ export async function syncAllDataToSupabase() {
       console.log(`📝 [SyncTool] 开始同步 ${designers.length} 个设计师...`);
       for (const designer of designers) {
         try {
-          console.log(`📝 [SyncTool] 同步设计师: ${designer.name}`);
+          console.log(`📝 [SyncTool] 同步设计师: ${designer.name} (ID: ${designer.id})`);
           const result = await services.designerService.create(designer);
           console.log(`✅ [SyncTool] 设计师同步成功: ${designer.name}`, result);
+          if (result?.id) {
+            designerIdMap.set(designer.id, result.id);
+            console.log(`🗺️ [SyncTool] 映射 ID: ${designer.id} -> ${result.id}`);
+          }
           successCount++;
         } catch (error: any) {
           failCount++;
@@ -107,7 +121,9 @@ export async function syncAllDataToSupabase() {
       console.log('⚠️ [SyncTool] 没有设计师数据需要同步');
     }
     
-    // 同步项目
+    console.log('🗺️ [SyncTool] 设计师 ID 映射表:', Object.fromEntries(designerIdMap));
+    
+    // 同步项目（需要映射 client_id 和 designer_id）
     const projects = readFromStorage(STORAGE_KEYS.projects);
     console.log('📊 [SyncTool] 从 localStorage 读取到项目:', projects?.length || 0);
     if (projects && Array.isArray(projects) && projects.length > 0) {
@@ -115,7 +131,18 @@ export async function syncAllDataToSupabase() {
       for (const project of projects) {
         try {
           console.log(`📝 [SyncTool] 同步项目: ${project.name}`);
-          const result = await services.projectService.create(project);
+          console.log(`🗺️ [SyncTool] 项目关联 - client_id: ${project.clientId}, designer_id: ${project.designerId}`);
+          
+          // 映射 ID
+          const mappedProject = {
+            ...project,
+            client_id: clientIdMap.get(project.clientId) || project.clientId,
+            designer_id: designerIdMap.get(project.designerId) || project.designerId,
+          };
+          
+          console.log(`🗺️ [SyncTool] 映射后 - client_id: ${mappedProject.client_id}, designer_id: ${mappedProject.designer_id}`);
+          
+          const result = await services.projectService.create(mappedProject);
           console.log(`✅ [SyncTool] 项目同步成功: ${project.name}`, result);
           successCount++;
         } catch (error: any) {
@@ -155,7 +182,7 @@ export async function syncAllDataToSupabase() {
       console.log('⚠️ [SyncTool] 没有案例数据需要同步');
     }
     
-    // 同步跟进记录
+    // 同步跟进记录（需要映射 client_id）
     const followUps = readFromStorage(STORAGE_KEYS.followUps);
     console.log('📊 [SyncTool] 从 localStorage 读取到跟进记录:', followUps?.length || 0);
     if (followUps && Array.isArray(followUps) && followUps.length > 0) {
@@ -163,7 +190,14 @@ export async function syncAllDataToSupabase() {
       for (const followUp of followUps) {
         try {
           console.log(`📝 [SyncTool] 同步跟进记录`);
-          const result = await services.followUpService.create(followUp);
+          
+          // 映射 client_id
+          const mappedFollowUp = {
+            ...followUp,
+            client_id: clientIdMap.get(followUp.clientId) || followUp.clientId,
+          };
+          
+          const result = await services.followUpService.create(mappedFollowUp);
           console.log(`✅ [SyncTool] 跟进记录同步成功`, result);
           successCount++;
         } catch (error: any) {

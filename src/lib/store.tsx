@@ -98,9 +98,7 @@ const syncToSupabase = async (action: string, data: any) => {
         console.log('✅ [Supabase Sync] 项目更新成功:', result);
         break;
       case 'deleteProject':
-        console.log('📝 [Supabase Sync] 正在删除项目...', data.id);
-        result = await services.projectService.delete(data.id);
-        console.log('✅ [Supabase Sync] 项目删除成功:', result);
+        console.log('📝 [Supabase Sync] 跳过删除项目（ID映射问题）:', data.id);
         break;
       case 'addClient':
         console.log('📝 [Supabase Sync] 正在创建客户...', data);
@@ -113,9 +111,8 @@ const syncToSupabase = async (action: string, data: any) => {
         console.log('✅ [Supabase Sync] 客户更新成功:', result);
         break;
       case 'deleteClient':
-        console.log('📝 [Supabase Sync] 正在删除客户...', data.id);
-        result = await services.clientService.delete(data.id);
-        console.log('✅ [Supabase Sync] 客户删除成功:', result);
+        console.log('📝 [Supabase Sync] 跳过删除客户（ID映射问题）:', data.id);
+        // 注意：删除操作暂时跳过同步，因为需要 ID 映射表
         break;
       case 'addDesigner':
         console.log('📝 [Supabase Sync] 正在创建设计师...', data);
@@ -128,9 +125,7 @@ const syncToSupabase = async (action: string, data: any) => {
         console.log('✅ [Supabase Sync] 设计师更新成功:', result);
         break;
       case 'deleteDesigner':
-        console.log('📝 [Supabase Sync] 正在删除设计师...', data.id);
-        result = await services.designerService.delete(data.id);
-        console.log('✅ [Supabase Sync] 设计师删除成功:', result);
+        console.log('📝 [Supabase Sync] 跳过删除设计师（ID映射问题）:', data.id);
         break;
       case 'addCase':
         console.log('📝 [Supabase Sync] 正在创建案例...', data);
@@ -143,9 +138,7 @@ const syncToSupabase = async (action: string, data: any) => {
         console.log('✅ [Supabase Sync] 案例更新成功:', result);
         break;
       case 'deleteCase':
-        console.log('📝 [Supabase Sync] 正在删除案例...', data.id);
-        result = await services.caseService.delete(data.id);
-        console.log('✅ [Supabase Sync] 案例删除成功:', result);
+        console.log('📝 [Supabase Sync] 跳过删除案例（ID映射问题）:', data.id);
         break;
       case 'addFollowUp':
         console.log('📝 [Supabase Sync] 正在创建跟进记录...', data);
@@ -153,9 +146,7 @@ const syncToSupabase = async (action: string, data: any) => {
         console.log('✅ [Supabase Sync] 跟进记录创建成功:', result);
         break;
       case 'deleteFollowUp':
-        console.log('📝 [Supabase Sync] 正在删除跟进记录...', data.id);
-        result = await services.followUpService.delete(data.id);
-        console.log('✅ [Supabase Sync] 跟进记录删除成功:', result);
+        console.log('📝 [Supabase Sync] 跳过删除跟进记录（ID映射问题）:', data.id);
         break;
     }
     console.log('🎉 [Supabase Sync] 同步完成:', action, '结果:', result);
