@@ -182,9 +182,9 @@ const syncToSupabase = async (
 
           // 同步阶段进度到 project_phases 表
           if (data.phases && data.phases.length > 0) {
-            try {
-              console.log('📋 [Supabase Sync] 开始同步阶段进度...');
-              for (const phase of data.phases) {
+            console.log('📋 [Supabase Sync] 开始同步阶段进度...');
+            for (const phase of data.phases) {
+              try {
                 await services.projectPhasesService.create({
                   project_id: result.id,
                   phase_name: phase.phase,
@@ -194,12 +194,12 @@ const syncToSupabase = async (
                   start_date: phase.startDate,
                   end_date: phase.endDate,
                 });
+              } catch (phaseError) {
+                console.warn('⚠️ [Supabase Sync] 阶段同步失败:', phase.phase, phaseError);
+                // 继续同步下一个阶段，不中断整个流程
               }
-              console.log('✅ [Supabase Sync] 阶段进度同步完成');
-            } catch (phaseError) {
-              console.warn('⚠️ [Supabase Sync] 阶段进度同步失败（PostgREST schema 缓存可能未更新）:', phaseError);
-              // 不中断项目创建流程，继续执行
             }
+            console.log('✅ [Supabase Sync] 阶段进度同步完成');
           }
         }
         break;
@@ -236,12 +236,18 @@ const syncToSupabase = async (
 
         // 同步阶段进度到 project_phases 表
         if (data.phases && projectId) {
+          console.log('📋 [Supabase Sync] 开始更新阶段进度...');
           try {
-            console.log('📋 [Supabase Sync] 开始更新阶段进度...');
             // 先删除旧的所有阶段
             await services.projectPhasesService.deleteByProjectId(projectId);
-            // 重新创建所有阶段
-            for (const phase of data.phases) {
+            console.log('✅ [Supabase Sync] 旧阶段删除成功');
+          } catch (deleteError) {
+            console.warn('⚠️ [Supabase Sync] 删除旧阶段失败:', deleteError);
+          }
+
+          // 重新创建所有阶段
+          for (const phase of data.phases) {
+            try {
               await services.projectPhasesService.create({
                 project_id: projectId,
                 phase_name: phase.phase,
@@ -251,12 +257,12 @@ const syncToSupabase = async (
                 start_date: phase.startDate,
                 end_date: phase.endDate,
               });
+            } catch (phaseError) {
+              console.warn('⚠️ [Supabase Sync] 阶段同步失败:', phase.phase, phaseError);
+              // 继续同步下一个阶段
             }
-            console.log('✅ [Supabase Sync] 阶段进度更新完成');
-          } catch (phaseError) {
-            console.warn('⚠️ [Supabase Sync] 阶段进度更新失败（PostgREST schema 缓存可能未更新）:', phaseError);
-            // 不中断项目更新流程，继续执行
           }
+          console.log('✅ [Supabase Sync] 阶段进度更新完成');
         }
         break;
       }
