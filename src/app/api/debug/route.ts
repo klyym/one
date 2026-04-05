@@ -1,35 +1,19 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { dbAdapter } from '@/storage/database/database-adapter';
 
 export async function GET() {
   try {
-    // 尝试获取 Supabase 客户端
-    const client = getSupabaseClient();
+    // 初始化数据库适配器
+    const mode = await dbAdapter.initialize();
 
-    // 测试连接：查询健康检查表
-    const { data, error } = await client
-      .from('health_check')
-      .select('*')
-      .limit(1);
-
-    if (error) {
-      throw new Error(`数据库查询失败: ${error.message}`);
-    }
-
-    // 查询工作室信息
-    const { data: studioData, error: studioError } = await client
-      .from('studio_info')
-      .select('*');
-
-    if (studioError) {
-      throw new Error(`查询工作室信息失败: ${studioError.message}`);
-    }
+    // 测试连接：查询工作室信息
+    const studioData = await dbAdapter.getStudioInfo();
 
     return NextResponse.json({
       success: true,
       message: '数据库连接成功',
-      database: {
-        healthCheck: data,
+      mode: mode,
+      data: {
         studioInfo: studioData,
       },
       timestamp: new Date().toISOString(),
@@ -39,7 +23,7 @@ export async function GET() {
       success: false,
       message: '数据库连接失败',
       error: error.message,
-      suggestion: '请检查 Supabase 环境变量配置',
+      suggestion: '数据库不可用，系统会自动降级到 localStorage 模式',
       timestamp: new Date().toISOString(),
     }, { status: 500 });
   }
