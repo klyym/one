@@ -164,28 +164,55 @@ class PostgresDatabaseService {
    * 根据搜索和筛选获取客户
    */
   async getClients(filters?: { search?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }) {
-    let query = this.db.select().from(schema.clients);
+    const conditions = [];
 
     if (filters?.search) {
-      query = query.where(
-        like(schema.clients.name, `%${filters.search}%`)
-      );
+      conditions.push(like(schema.clients.name, `%${filters.search}%`));
     }
 
     if (filters?.sortBy) {
       const column = schema.clients[filters.sortBy as keyof typeof schema.clients];
       if (column) {
         if (filters.sortOrder === 'asc') {
-          query = query.orderBy(column as any);
+          if (conditions.length > 0) {
+            return await this.db
+              .select()
+              .from(schema.clients)
+              .where(and(...conditions))
+              .orderBy(column as any);
+          }
+          return await this.db
+            .select()
+            .from(schema.clients)
+            .orderBy(column as any);
         } else {
-          query = query.orderBy(desc(column as any));
+          if (conditions.length > 0) {
+            return await this.db
+              .select()
+              .from(schema.clients)
+              .where(and(...conditions))
+              .orderBy(desc(column as any));
+          }
+          return await this.db
+            .select()
+            .from(schema.clients)
+            .orderBy(desc(column as any));
         }
       }
-    } else {
-      query = query.orderBy(desc(schema.clients.created_at));
     }
 
-    return await query;
+    if (conditions.length > 0) {
+      return await this.db
+        .select()
+        .from(schema.clients)
+        .where(and(...conditions))
+        .orderBy(desc(schema.clients.created_at));
+    }
+
+    return await this.db
+      .select()
+      .from(schema.clients)
+      .orderBy(desc(schema.clients.created_at));
   }
 
   /**
@@ -326,11 +353,11 @@ class PostgresDatabaseService {
     }
 
     if (filters?.clientId) {
-      conditions.push(eq(schema.projects.clientId, filters.clientId));
+      conditions.push(eq(schema.projects.client_id, filters.clientId));
     }
 
     if (filters?.designerId) {
-      conditions.push(eq(schema.projects.designerId, filters.designerId));
+      conditions.push(eq(schema.projects.designer_id, filters.designerId));
     }
 
     if (filters?.search) {
@@ -338,7 +365,7 @@ class PostgresDatabaseService {
     }
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      return await query.where(and(...conditions)).orderBy(desc(schema.projects.created_at));
     }
 
     return await query.orderBy(desc(schema.projects.created_at));
@@ -421,7 +448,7 @@ class PostgresDatabaseService {
     }
 
     if (filters?.isFeatured !== undefined) {
-      conditions.push(eq(schema.designCases.isFeatured, filters.isFeatured));
+      conditions.push(eq(schema.designCases.is_featured, filters.isFeatured));
     }
 
     if (filters?.search) {
@@ -429,7 +456,7 @@ class PostgresDatabaseService {
     }
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      return await query.where(and(...conditions)).orderBy(desc(schema.designCases.created_at));
     }
 
     return await query.orderBy(desc(schema.designCases.created_at));
@@ -492,8 +519,8 @@ class PostgresDatabaseService {
     return await this.db
       .select()
       .from(schema.followUps)
-      .where(eq(schema.followUps.clientId, clientId))
-      .orderBy(desc(schema.followUps.createdAt));
+      .where(eq(schema.followUps.client_id, clientId))
+      .orderBy(desc(schema.followUps.created_at));
   }
 
   /**
