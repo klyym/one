@@ -182,19 +182,24 @@ const syncToSupabase = async (
 
           // 同步阶段进度到 project_phases 表
           if (data.phases && data.phases.length > 0) {
-            console.log('📋 [Supabase Sync] 开始同步阶段进度...');
-            for (const phase of data.phases) {
-              await services.projectPhasesService.create({
-                project_id: result.id,
-                phase_name: phase.phase,
-                status: phase.status,
-                progress: phase.progress,
-                notes: phase.notes,
-                start_date: phase.startDate,
-                end_date: phase.endDate,
-              });
+            try {
+              console.log('📋 [Supabase Sync] 开始同步阶段进度...');
+              for (const phase of data.phases) {
+                await services.projectPhasesService.create({
+                  project_id: result.id,
+                  phase_name: phase.phase,
+                  status: phase.status,
+                  progress: phase.progress,
+                  notes: phase.notes,
+                  start_date: phase.startDate,
+                  end_date: phase.endDate,
+                });
+              }
+              console.log('✅ [Supabase Sync] 阶段进度同步完成');
+            } catch (phaseError) {
+              console.warn('⚠️ [Supabase Sync] 阶段进度同步失败（PostgREST schema 缓存可能未更新）:', phaseError);
+              // 不中断项目创建流程，继续执行
             }
-            console.log('✅ [Supabase Sync] 阶段进度同步完成');
           }
         }
         break;
@@ -231,22 +236,27 @@ const syncToSupabase = async (
 
         // 同步阶段进度到 project_phases 表
         if (data.phases && projectId) {
-          console.log('📋 [Supabase Sync] 开始更新阶段进度...');
-          // 先删除旧的所有阶段
-          await services.projectPhasesService.deleteByProjectId(projectId);
-          // 重新创建所有阶段
-          for (const phase of data.phases) {
-            await services.projectPhasesService.create({
-              project_id: projectId,
-              phase_name: phase.phase,
-              status: phase.status,
-              progress: phase.progress,
-              notes: phase.notes,
-              start_date: phase.startDate,
-              end_date: phase.endDate,
-            });
+          try {
+            console.log('📋 [Supabase Sync] 开始更新阶段进度...');
+            // 先删除旧的所有阶段
+            await services.projectPhasesService.deleteByProjectId(projectId);
+            // 重新创建所有阶段
+            for (const phase of data.phases) {
+              await services.projectPhasesService.create({
+                project_id: projectId,
+                phase_name: phase.phase,
+                status: phase.status,
+                progress: phase.progress,
+                notes: phase.notes,
+                start_date: phase.startDate,
+                end_date: phase.endDate,
+              });
+            }
+            console.log('✅ [Supabase Sync] 阶段进度更新完成');
+          } catch (phaseError) {
+            console.warn('⚠️ [Supabase Sync] 阶段进度更新失败（PostgREST schema 缓存可能未更新）:', phaseError);
+            // 不中断项目更新流程，继续执行
           }
-          console.log('✅ [Supabase Sync] 阶段进度更新完成');
         }
         break;
       }
@@ -254,9 +264,14 @@ const syncToSupabase = async (
         console.log('📝 [Supabase Sync] 正在删除项目...', data.id);
         const projectId = getMappedId(data.id, idMap);
         if (projectId) {
-          // 先删除项目关联的阶段进度
-          await services.projectPhasesService.deleteByProjectId(projectId);
-          console.log('✅ [Supabase Sync] 阶段进度删除成功');
+          try {
+            // 先删除项目关联的阶段进度
+            await services.projectPhasesService.deleteByProjectId(projectId);
+            console.log('✅ [Supabase Sync] 阶段进度删除成功');
+          } catch (phaseError) {
+            console.warn('⚠️ [Supabase Sync] 阶段进度删除失败:', phaseError);
+            // 继续删除项目
+          }
           // 删除项目
           result = await services.projectService.delete(projectId);
           console.log('✅ [Supabase Sync] 项目删除成功');
@@ -1136,7 +1151,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // 为每个项目加载阶段进度
           const projectsWithPhases = await Promise.all(
             supabaseProjects.map(async (p: any) => {
-              const phases = await services.projectPhasesService.getByProjectId(p.id);
+              let phases: any[] = [];
+              try {
+                phases = await services.projectPhasesService.getByProjectId(p.id);
+              } catch (phaseError) {
+                console.warn('⚠️ [Store] 加载项目阶段进度失败:', p.id, phaseError);
+                phases = [];
+              }
               return {
                 ...p,
                 phases: phases.map((phase: any) => ({
