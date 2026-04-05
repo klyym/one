@@ -49,6 +49,78 @@ const STORAGE_KEYS = {
   followUps: 'studio_followups',
 };
 
+// Supabase 服务缓存
+let dbServices: any = null;
+
+// 异步加载 Supabase 服务
+const loadDbServices = async () => {
+  if (dbServices) return dbServices;
+  try {
+    const services = await import('@/storage/database/services');
+    dbServices = services;
+    return services;
+  } catch (error) {
+    console.error('Failed to load database services:', error);
+    return null;
+  }
+};
+
+// 同步数据到 Supabase（异步，不阻塞）
+const syncToSupabase = async (action: string, data: any) => {
+  try {
+    const services = await loadDbServices();
+    if (!services) return;
+
+    switch (action) {
+      case 'addProject':
+        await services.projectService.create(data);
+        break;
+      case 'updateProject':
+        await services.projectService.update(data.id, data);
+        break;
+      case 'deleteProject':
+        await services.projectService.delete(data.id);
+        break;
+      case 'addClient':
+        await services.clientService.create(data);
+        break;
+      case 'updateClient':
+        await services.clientService.update(data.id, data);
+        break;
+      case 'deleteClient':
+        await services.clientService.delete(data.id);
+        break;
+      case 'addDesigner':
+        await services.designerService.create(data);
+        break;
+      case 'updateDesigner':
+        await services.designerService.update(data.id, data);
+        break;
+      case 'deleteDesigner':
+        await services.designerService.delete(data.id);
+        break;
+      case 'addCase':
+        await services.caseService.create(data);
+        break;
+      case 'updateCase':
+        await services.caseService.update(data.id, data);
+        break;
+      case 'deleteCase':
+        await services.caseService.delete(data.id);
+        break;
+      case 'addFollowUp':
+        await services.followUpService.create(data);
+        break;
+      case 'deleteFollowUp':
+        await services.followUpService.delete(data.id);
+        break;
+    }
+  } catch (error) {
+    console.error(`Failed to sync ${action} to Supabase:`, error);
+    // 不抛出错误，让 localStorage 作为主要存储
+  }
+};
+
 // 初始数据
 const initialClients: Client[] = [
   {
@@ -470,6 +542,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProjects(prev => {
       const updated = [...prev, newProject];
       saveToStorage(STORAGE_KEYS.projects, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('addProject', newProject).catch(console.error);
       return updated;
     });
   };
@@ -482,6 +556,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : p
       );
       saveToStorage(STORAGE_KEYS.projects, updated);
+      // 异步同步到 Supabase
+      const updatedProject = updated.find(p => p.id === id);
+      if (updatedProject) {
+        syncToSupabase('updateProject', updatedProject).catch(console.error);
+      }
       return updated;
     });
   };
@@ -490,6 +569,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProjects(prev => {
       const updated = prev.filter(p => p.id !== id);
       saveToStorage(STORAGE_KEYS.projects, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('deleteProject', { id }).catch(console.error);
       return updated;
     });
   };
@@ -506,6 +587,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setClients(prev => {
       const updated = [...prev, newClient];
       saveToStorage(STORAGE_KEYS.clients, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('addClient', newClient).catch(console.error);
       return updated;
     });
   };
@@ -514,6 +597,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setClients(prev => {
       const updated = prev.map(c => (c.id === id ? { ...c, ...updates } : c));
       saveToStorage(STORAGE_KEYS.clients, updated);
+      // 异步同步到 Supabase
+      const updatedClient = updated.find(c => c.id === id);
+      if (updatedClient) {
+        syncToSupabase('updateClient', updatedClient).catch(console.error);
+      }
       return updated;
     });
   };
@@ -522,6 +610,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setClients(prev => {
       const updated = prev.filter(c => c.id !== id);
       saveToStorage(STORAGE_KEYS.clients, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('deleteClient', { id }).catch(console.error);
       return updated;
     });
   };
@@ -538,6 +628,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setDesigners(prev => {
       const updated = [...prev, newDesigner];
       saveToStorage(STORAGE_KEYS.designers, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('addDesigner', newDesigner).catch(console.error);
       return updated;
     });
   };
@@ -546,6 +638,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setDesigners(prev => {
       const updated = prev.map(d => (d.id === id ? { ...d, ...updates } : d));
       saveToStorage(STORAGE_KEYS.designers, updated);
+      // 异步同步到 Supabase
+      const updatedDesigner = updated.find(d => d.id === id);
+      if (updatedDesigner) {
+        syncToSupabase('updateDesigner', updatedDesigner).catch(console.error);
+      }
       return updated;
     });
   };
@@ -554,6 +651,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setDesigners(prev => {
       const updated = prev.filter(d => d.id !== id);
       saveToStorage(STORAGE_KEYS.designers, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('deleteDesigner', { id }).catch(console.error);
       return updated;
     });
   };
@@ -567,19 +666,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       likes: 0,
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setCases(prev => [...prev, newCase]);
+    setCases(prev => {
+      const updated = [...prev, newCase];
+      saveToStorage(STORAGE_KEYS.cases, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('addCase', newCase).catch(console.error);
+      return updated;
+    });
   };
 
   const updateCase = (id: string, updates: Partial<DesignCase>) => {
-    setCases(prev =>
-      prev.map(c => (c.id === id ? { ...c, ...updates } : c))
-    );
+    setCases(prev => {
+      const updated = prev.map(c => (c.id === id ? { ...c, ...updates } : c));
+      saveToStorage(STORAGE_KEYS.cases, updated);
+      // 异步同步到 Supabase
+      const updatedCase = updated.find(c => c.id === id);
+      if (updatedCase) {
+        syncToSupabase('updateCase', updatedCase).catch(console.error);
+      }
+      return updated;
+    });
   };
 
   const deleteCase = (id: string) => {
     setCases(prev => {
       const updated = prev.filter(c => c.id !== id);
       saveToStorage(STORAGE_KEYS.cases, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('deleteCase', { id }).catch(console.error);
       return updated;
     });
   };
@@ -594,6 +708,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFollowUps(prev => {
       const updated = [newFollowUp, ...prev];
       saveToStorage(STORAGE_KEYS.followUps, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('addFollowUp', newFollowUp).catch(console.error);
       return updated;
     });
 
@@ -605,6 +721,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : c
       );
       saveToStorage(STORAGE_KEYS.clients, updated);
+      // 异步同步到 Supabase
+      const updatedClient = updated.find(c => c.id === followUp.clientId);
+      if (updatedClient) {
+        syncToSupabase('updateClient', updatedClient).catch(console.error);
+      }
       return updated;
     });
   };
@@ -613,6 +734,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFollowUps(prev => {
       const updated = prev.filter(f => f.id !== id);
       saveToStorage(STORAGE_KEYS.followUps, updated);
+      // 异步同步到 Supabase
+      syncToSupabase('deleteFollowUp', { id }).catch(console.error);
       return updated;
     });
   };
