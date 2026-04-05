@@ -10,6 +10,7 @@ import { Settings, Bell, Shield, Palette, CheckCircle, AlertCircle, Eye, EyeOff,
 import { useAuth } from '@/lib/auth';
 import { useStudio } from '@/lib/studio';
 import { Separator } from '@/components/ui/separator';
+import DbStatusCheck from '@/components/db-status-check';
 
 export default function SettingsPage() {
   const { user, changePassword, updateProfile } = useAuth();
@@ -234,6 +235,9 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold text-foreground">系统设置</h1>
         <p className="text-muted-foreground mt-1">管理工作室系统配置</p>
       </div>
+
+      {/* 数据库连接状态 */}
+      <DbStatusCheck />
 
       {/* 账户信息 */}
       <Card>
