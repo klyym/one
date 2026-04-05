@@ -145,7 +145,7 @@ const syncToSupabase = async (
         // 创建映射后的数据，排除 camelCase 的 ID 字段和 phases 字段
         const mappedData = {
           name: data.name,
-          location: data.location,
+          address: data.location || data.address,
           area: data.area,
           style: data.style,
           budget: data.budget,
@@ -188,9 +188,10 @@ const syncToSupabase = async (
         }
 
         // 创建映射后的数据，排除 camelCase 的 ID 字段和 phases 字段
-        const { clientId, designerId, createdAt, updatedAt, phases, ...restData } = data;
+        const { clientId, designerId, createdAt, updatedAt, phases, location, ...restData } = data;
         const mappedData = {
           ...restData,
+          address: location || data.address,
           client_id: mappedClientId || null,
           designer_id: mappedDesignerId || null,
           created_at: createdAt,
@@ -1091,7 +1092,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             priority: p.priority,
             budget: p.budget || 0,
             area: p.area || 0,
-            location: p.location || '',
+            location: p.address || '',
             style: p.style || '',
             startDate: p.start_date?.split('T')[0] || '',
             endDate: p.end_date?.split('T')[0] || '',
@@ -1119,7 +1120,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             name: c.name,
             style: c.style || '',
             area: c.area || 0,
-            address: c.address || '',
+            location: c.address || '',
             images: c.images || [],
             tags: c.tags ? c.tags.split(',').map((t: string) => t.trim()) : [],
             featured: c.featured || false,
