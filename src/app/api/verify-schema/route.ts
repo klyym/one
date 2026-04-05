@@ -68,11 +68,12 @@ export async function GET() {
       },
       timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     return NextResponse.json({
       success: false,
       message: '❌ 验证失败',
-      error: error.message,
+      error: err.message,
       timestamp: new Date().toISOString(),
     }, { status: 500 });
   }

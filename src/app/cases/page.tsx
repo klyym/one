@@ -297,7 +297,7 @@ export default function CasesPage() {
 
         {filteredCases.length === 0 && (
           <div className="col-span-full text-center py-12 text-muted-foreground">
-            没有找到匹配的案例，点击"新建案例"添加
+            没有找到匹配的案例，点击&ldquo;新建案例&rdquo;添加
           </div>
         )}
       </div>

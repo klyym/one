@@ -5,12 +5,12 @@
 
 ## 版本技术栈
 
-- **Framework**: Next.js 16 (App Router)
-- **Core**: React 19
+- **Framework**: Next.js 15.1.4 (App Router)
+- **Core**: React 19.2.3
 - **Language**: TypeScript 5
 - **UI 组件**: shadcn/ui (基于 Radix UI)
-- **Styling**: Tailwind CSS 4
-- **图表库**: Recharts (数据可视化)
+- **Styling**: Tailwind CSS 3.4.19 + PostCSS 8
+- **图表库**: Recharts 2.15.4 (数据可视化)
 - **状态管理**: React Context API
 - **数据库**: Supabase (PostgreSQL)
 - **ORM**: Drizzle ORM (Schema定义)
@@ -274,9 +274,11 @@ await initAppDatabase();
 - 遵循 TypeScript 严格类型检查
 
 ### 样式规范
-- 使用 Tailwind CSS 进行样式编写
+- 使用 Tailwind CSS v3.4.19 进行样式编写
+- 配置文件：`tailwind.config.js` 和 `postcss.config.js`
 - 支持 dark mode（通过 next-themes）
 - 响应式设计：移动端优先
+- 注意：避免使用 Tailwind v4 特有的语法，如 `var(--spacing(x))` 等
 
 ### Hydration 错误预防
 严禁在 JSX 渲染逻辑中直接使用 typeof window、Date.now()、Math.random() 等动态数据。必须使用 'use client' 并配合 useEffect + useState 确保动态内容仅在客户端挂载后渲染；同时严禁非法 HTML 嵌套（如 <p> 嵌套 <div>）。

@@ -430,7 +430,7 @@ export const designCaseService = {
     style: string;
     area?: number;
     address?: string;
-    images?: any[];
+    images?: string[];
     tags?: string;
     is_featured?: boolean;
   }) {
@@ -448,7 +448,7 @@ export const designCaseService = {
     style?: string;
     area?: number;
     address?: string;
-    images?: any[];
+    images?: string[];
     tags?: string;
     is_featured?: boolean;
     view_count?: number;

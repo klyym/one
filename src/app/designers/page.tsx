@@ -371,7 +371,7 @@ export default function DesignersPage() {
 
         {designers.length === 0 && (
           <div className="col-span-full text-center py-12 text-muted-foreground">
-            暂无设计师信息，点击"新建设计师"添加
+            暂无设计师信息，点击&ldquo;新建设计师&rdquo;添加
           </div>
         )}
       </div>

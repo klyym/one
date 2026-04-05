@@ -78,11 +78,12 @@ export async function GET() {
       checks,
       timestamp: new Date().toISOString(),
     }, { status: allSuccess ? 200 : 500 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     return NextResponse.json({
       success: false,
       message: '❌ 数据库验证失败',
-      error: error.message,
+      error: err.message,
       suggestion: '请在 Supabase Dashboard SQL Editor 中执行修复脚本',
       timestamp: new Date().toISOString(),
     }, { status: 500 });
