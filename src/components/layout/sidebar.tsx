@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import SyncStatusIndicator from '@/components/sync-status';
 
 const navigation = [
   { name: '数据看板', href: '/', icon: LayoutDashboard },
@@ -151,7 +152,8 @@ export function Sidebar() {
         )}
 
         <div className="mt-4 px-3 py-2 rounded-lg bg-muted/50">
-          <p className="text-xs text-muted-foreground">版本 1.0.0</p>
+          <p className="text-xs text-muted-foreground mb-2">版本 1.0.0</p>
+          <SyncStatusIndicator />
         </div>
       </div>
     </div>

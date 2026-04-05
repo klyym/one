@@ -1,11 +1,75 @@
 /**
  * 数据库服务层
  * 提供统一的数据访问接口
+ * 支持字段名映射，将前端数据格式转换为数据库格式
  */
 
 import { getSupabaseClient } from './supabase-client';
 
 const client = getSupabaseClient();
+
+// 字段映射工具函数
+const mapClientToDb = {
+  // Client 映射
+  client: (data: any) => ({
+    name: data.name,
+    phone: data.phone,
+    email: data.email,
+    address: data.address,
+    company_name: data.company || data.company_name,
+    notes: data.notes,
+  }),
+  
+  // Designer 映射
+  designer: (data: any) => ({
+    name: data.name,
+    position: data.title || data.position,
+    phone: data.phone,
+    email: data.email,
+    specialties: data.specialty ? data.specialty.join(',') : undefined,
+    rating: data.rating || 0,
+    bio: data.bio,
+  }),
+  
+  // Project 映射
+  project: (data: any) => ({
+    name: data.name,
+    client_id: data.clientId,
+    designer_id: data.designerId,
+    status: data.status,
+    priority: data.priority,
+    budget: data.budget,
+    area: data.area,
+    address: data.location || data.address,
+    style: data.style,
+    overall_progress: data.overallProgress,
+    current_phase: data.currentPhase,
+    start_date: data.startDate,
+    end_date: data.endDate,
+    notes: data.description || data.notes,
+  }),
+  
+  // DesignCase 映射
+  designCase: (data: any) => ({
+    name: data.name,
+    style: data.style,
+    area: data.area,
+    address: data.location || data.address,
+    images: data.images,
+    tags: data.tags ? data.tags.join(',') : undefined,
+    is_featured: data.featured || false,
+  }),
+  
+  // FollowUp 映射
+  followUp: (data: any) => ({
+    client_id: data.clientId,
+    type: data.type,
+    content: data.content,
+    next_plan: data.nextAction,
+    next_date: data.nextDate,
+    followed_by: data.designerId,
+  }),
+};
 
 // 工作室信息
 export const studioInfoService = {
@@ -30,22 +94,26 @@ export const studioInfoService = {
   },
 
   async initialize() {
-    // 检查是否已存在数据
-    const { data: existing } = await client
-      .from('studio_info')
-      .select('id')
-      .maybeSingle();
-
-    if (!existing) {
-      const { error } = await client
+    try {
+      // 检查是否已存在数据
+      const { data: existing } = await client
         .from('studio_info')
-        .insert({
-          name: '室内设计工作室',
-          address: '',
-          phone: '',
-          email: '',
-        });
-      if (error) throw new Error(`初始化工作室信息失败: ${error.message}`);
+        .select('id')
+        .maybeSingle();
+
+      if (!existing) {
+        const { error } = await client
+          .from('studio_info')
+          .insert({
+            name: '室内设计工作室',
+            address: '',
+            phone: '',
+            email: '',
+          });
+        if (error) throw new Error(`初始化工作室信息失败: ${error.message}`);
+      }
+    } catch (error) {
+      console.warn('工作室信息初始化失败:', error);
     }
   },
 };
@@ -111,38 +179,41 @@ export const userService = {
   },
 
   async initialize() {
-    // 检查是否已存在用户
-    const { data: existing } = await client
-      .from('users')
-      .select('id')
-      .limit(1);
-
-    if (!existing || existing.length === 0) {
-      // 创建默认用户（密码需要实际哈希）
-      // 这里使用简化版本，实际项目中应该使用 bcrypt 或类似的密码哈希库
-      const defaultUsers = [
-        {
-          id: 'admin-001',
-          email: 'admin@studio.com',
-          name: '管理员',
-          role: 'admin',
-          password_hash: 'admin123', // 实际应该使用 bcrypt hash
-          is_active: true,
-        },
-        {
-          id: 'designer-001',
-          email: 'chen@studio.com',
-          name: '陈设计师',
-          role: 'designer',
-          password_hash: '123456', // 实际应该使用 bcrypt hash
-          is_active: true,
-        },
-      ];
-
-      const { error } = await client
+    try {
+      // 检查是否已存在用户
+      const { data: existing } = await client
         .from('users')
-        .insert(defaultUsers);
-      if (error) throw new Error(`初始化用户数据失败: ${error.message}`);
+        .select('id')
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        // 创建默认用户（密码需要实际哈希）
+        const defaultUsers = [
+          {
+            id: 'admin-001',
+            email: 'admin@studio.com',
+            name: '管理员',
+            role: 'admin',
+            password_hash: 'admin123',
+            is_active: true,
+          },
+          {
+            id: 'designer-001',
+            email: 'chen@studio.com',
+            name: '陈设计师',
+            role: 'designer',
+            password_hash: '123456',
+            is_active: true,
+          },
+        ];
+
+        const { error } = await client
+          .from('users')
+          .insert(defaultUsers);
+        if (error) throw new Error(`初始化用户数据失败: ${error.message}`);
+      }
+    } catch (error) {
+      console.warn('用户数据初始化失败:', error);
     }
   },
 };
@@ -168,20 +239,24 @@ export const clientService = {
     return data;
   },
 
-  async create(clientData: { name: string; phone?: string; email?: string; address?: string; company_name?: string; notes?: string }) {
+  async create(clientData: any) {
+    const dbData = mapClientToDb.client(clientData);
+    console.log('[ClientService] 创建客户:', dbData);
     const { data, error } = await client
       .from('clients')
-      .insert(clientData)
+      .insert(dbData)
       .select()
       .maybeSingle();
     if (error) throw new Error(`创建客户失败: ${error.message}`);
     return data;
   },
 
-  async update(id: string, updates: { name?: string; phone?: string; email?: string; address?: string; company_name?: string; notes?: string }) {
+  async update(id: string, updates: any) {
+    const dbData = mapClientToDb.client(updates);
+    console.log('[ClientService] 更新客户:', id, dbData);
     const { data, error } = await client
       .from('clients')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...dbData, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .maybeSingle();
@@ -190,6 +265,7 @@ export const clientService = {
   },
 
   async delete(id: string) {
+    console.log('[ClientService] 删除客户:', id);
     const { error } = await client
       .from('clients')
       .delete()
@@ -219,20 +295,24 @@ export const designerService = {
     return data;
   },
 
-  async create(designer: { name: string; position: string; phone: string; email?: string; specialties?: string; rating?: number; bio?: string }) {
+  async create(designer: any) {
+    const dbData = mapClientToDb.designer(designer);
+    console.log('[DesignerService] 创建设计师:', dbData);
     const { data, error } = await client
       .from('designers')
-      .insert(designer)
+      .insert(dbData)
       .select()
       .maybeSingle();
     if (error) throw new Error(`创建设计师失败: ${error.message}`);
     return data;
   },
 
-  async update(id: string, updates: { name?: string; position?: string; phone?: string; email?: string; specialties?: string; rating?: number; bio?: string; project_count?: number }) {
+  async update(id: string, updates: any) {
+    const dbData = mapClientToDb.designer(updates);
+    console.log('[DesignerService] 更新设计师:', id, dbData);
     const { data, error } = await client
       .from('designers')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...dbData, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .maybeSingle();
@@ -241,6 +321,7 @@ export const designerService = {
   },
 
   async delete(id: string) {
+    console.log('[DesignerService] 删除设计师:', id);
     const { error } = await client
       .from('designers')
       .delete()
@@ -249,16 +330,14 @@ export const designerService = {
   },
 
   async incrementProjectCount(id: string) {
-    const { data, error } = await client
-      .rpc('increment_project_count', { designer_id: id });
-    if (error) {
-      // 如果 RPC 不存在，手动更新
+    try {
       const { data: designer } = await this.getById(id);
       if (designer) {
         return this.update(id, { project_count: (designer.project_count || 0) + 1 });
       }
+    } catch (error) {
+      console.warn('增加设计师项目计数失败:', error);
     }
-    return data;
   },
 };
 
@@ -283,54 +362,30 @@ export const projectService = {
     return data;
   },
 
-  async create(project: {
-    name: string;
-    client_id: string;
-    designer_id: string;
-    status?: string;
-    priority?: string;
-    budget?: number;
-    area?: number;
-    address?: string;
-    style?: string;
-    start_date?: string;
-    end_date?: string;
-    notes?: string;
-  }) {
+  async create(project: any) {
+    const dbData = mapClientToDb.project(project);
+    console.log('[ProjectService] 创建项目:', dbData);
     const { data, error } = await client
       .from('projects')
-      .insert(project)
+      .insert(dbData)
       .select()
       .maybeSingle();
     if (error) throw new Error(`创建项目失败: ${error.message}`);
     
     // 增加设计师项目计数
-    if (project.designer_id) {
-      await designerService.incrementProjectCount(project.designer_id);
+    if (project.designerId) {
+      await this.incrementProjectCount(project.designerId);
     }
     
     return data;
   },
 
-  async update(id: string, updates: {
-    name?: string;
-    client_id?: string;
-    designer_id?: string;
-    status?: string;
-    priority?: string;
-    budget?: number;
-    area?: number;
-    address?: string;
-    style?: string;
-    overall_progress?: number;
-    current_phase?: string;
-    start_date?: string;
-    end_date?: string;
-    notes?: string;
-  }) {
+  async update(id: string, updates: any) {
+    const dbData = mapClientToDb.project(updates);
+    console.log('[ProjectService] 更新项目:', id, dbData);
     const { data, error } = await client
       .from('projects')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...dbData, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .maybeSingle();
@@ -339,73 +394,25 @@ export const projectService = {
   },
 
   async delete(id: string) {
+    console.log('[ProjectService] 删除项目:', id);
     const { error } = await client
       .from('projects')
       .delete()
       .eq('id', id);
     if (error) throw new Error(`删除项目失败: ${error.message}`);
   },
-};
 
-// 项目阶段
-export const projectPhaseService = {
-  async getByProjectId(projectId: string) {
-    const { data, error } = await client
-      .from('project_phases')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
-    if (error) throw new Error(`获取项目阶段失败: ${error.message}`);
-    return data || [];
-  },
-
-  async create(phase: {
-    project_id: string;
-    phase_name: string;
-    status?: string;
-    progress?: number;
-    notes?: string;
-    start_date?: string;
-    end_date?: string;
-  }) {
-    const { data, error } = await client
-      .from('project_phases')
-      .insert(phase)
-      .select()
-      .maybeSingle();
-    if (error) throw new Error(`创建项目阶段失败: ${error.message}`);
-    return data;
-  },
-
-  async update(id: string, updates: {
-    phase_name?: string;
-    status?: string;
-    progress?: number;
-    notes?: string;
-    start_date?: string;
-    end_date?: string;
-  }) {
-    const { data, error } = await client
-      .from('project_phases')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-    if (error) throw new Error(`更新项目阶段失败: ${error.message}`);
-    return data;
-  },
-
-  async delete(id: string) {
-    const { error } = await client
-      .from('project_phases')
-      .delete()
-      .eq('id', id);
-    if (error) throw new Error(`删除项目阶段失败: ${error.message}`);
+  async incrementProjectCount(designerId: string) {
+    try {
+      await designerService.incrementProjectCount(designerId);
+    } catch (error) {
+      console.warn('增加设计师项目计数失败:', error);
+    }
   },
 };
 
 // 设计案例
-export const designCaseService = {
+export const caseService = {
   async getAll() {
     const { data, error } = await client
       .from('design_cases')
@@ -425,38 +432,24 @@ export const designCaseService = {
     return data;
   },
 
-  async create(caseData: {
-    name: string;
-    style: string;
-    area?: number;
-    address?: string;
-    images?: string[];
-    tags?: string;
-    is_featured?: boolean;
-  }) {
+  async create(caseData: any) {
+    const dbData = mapClientToDb.designCase(caseData);
+    console.log('[CaseService] 创建案例:', dbData);
     const { data, error } = await client
       .from('design_cases')
-      .insert(caseData)
+      .insert(dbData)
       .select()
       .maybeSingle();
     if (error) throw new Error(`创建设计案例失败: ${error.message}`);
     return data;
   },
 
-  async update(id: string, updates: {
-    name?: string;
-    style?: string;
-    area?: number;
-    address?: string;
-    images?: string[];
-    tags?: string;
-    is_featured?: boolean;
-    view_count?: number;
-    like_count?: number;
-  }) {
+  async update(id: string, updates: any) {
+    const dbData = mapClientToDb.designCase(updates);
+    console.log('[CaseService] 更新案例:', id, dbData);
     const { data, error } = await client
       .from('design_cases')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...dbData, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .maybeSingle();
@@ -465,6 +458,7 @@ export const designCaseService = {
   },
 
   async delete(id: string) {
+    console.log('[CaseService] 删除案例:', id);
     const { error } = await client
       .from('design_cases')
       .delete()
@@ -485,17 +479,12 @@ export const followUpService = {
     return data || [];
   },
 
-  async create(followUp: {
-    client_id: string;
-    type: string;
-    content: string;
-    next_plan?: string;
-    next_date?: string;
-    followed_by?: string;
-  }) {
+  async create(followUp: any) {
+    const dbData = mapClientToDb.followUp(followUp);
+    console.log('[FollowUpService] 创建跟进记录:', dbData);
     const { data, error } = await client
       .from('follow_ups')
-      .insert(followUp)
+      .insert(dbData)
       .select()
       .maybeSingle();
     if (error) throw new Error(`创建跟进记录失败: ${error.message}`);
@@ -503,6 +492,7 @@ export const followUpService = {
   },
 
   async delete(id: string) {
+    console.log('[FollowUpService] 删除跟进记录:', id);
     const { error } = await client
       .from('follow_ups')
       .delete()
@@ -510,15 +500,3 @@ export const followUpService = {
     if (error) throw new Error(`删除跟进记录失败: ${error.message}`);
   },
 };
-
-// 数据库初始化
-export async function initializeDatabase() {
-  try {
-    await studioInfoService.initialize();
-    await userService.initialize();
-    console.log('数据库初始化完成');
-  } catch (error) {
-    console.error('数据库初始化失败:', error);
-    throw error;
-  }
-}
