@@ -139,6 +139,12 @@ const syncToSupabase = async (
         console.log('🗺️ [Supabase Sync] ID 映射后:', mappedData);
         result = await services.projectService.create(mappedData);
         console.log('✅ [Supabase Sync] 项目创建成功:', result);
+        // 记录项目 ID 映射
+        if (result?.id && data.id) {
+          const newMap = recordIdMapping(data.id, result.id, idMap);
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 记录项目 ID 映射:', data.id, '->', result.id);
+        }
         break;
       }
       case 'updateProject': {
@@ -230,11 +236,17 @@ const syncToSupabase = async (
         }
         break;
       }
-      case 'addCase':
+      case 'addCase': {
         console.log('📝 [Supabase Sync] 正在创建案例...', data);
         result = await services.caseService.create(data);
         console.log('✅ [Supabase Sync] 案例创建成功:', result);
+        if (result?.id && data.id) {
+          const newMap = recordIdMapping(data.id, result.id, idMap);
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 记录案例 ID 映射:', data.id, '->', result.id);
+        }
         break;
+      }
       case 'updateCase':
         console.log('📝 [Supabase Sync] 正在更新案例...', data.id, data);
         result = await services.caseService.update(data.id, data);
@@ -260,6 +272,11 @@ const syncToSupabase = async (
         };
         result = await services.followUpService.create(mappedData);
         console.log('✅ [Supabase Sync] 跟进记录创建成功:', result);
+        if (result?.id && data.id) {
+          const newMap = recordIdMapping(data.id, result.id, idMap);
+          setIdMap(newMap);
+          console.log('🗺️ [Supabase Sync] 记录跟进记录 ID 映射:', data.id, '->', result.id);
+        }
         break;
       }
       case 'deleteFollowUp': {
