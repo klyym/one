@@ -978,15 +978,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // 只在客户端且 localStorage 为空时加载
+    // 应用启动时始终尝试从 Supabase 加载（云端有数据则覆盖本地，云端为空则保留本地）
     if (typeof window !== 'undefined') {
-      const hasLocalData = localStorage.getItem(STORAGE_KEYS.clients) ||
-                          localStorage.getItem(STORAGE_KEYS.designers) ||
-                          localStorage.getItem(STORAGE_KEYS.projects);
-
-      if (!hasLocalData) {
-        loadFromSupabase();
-      }
+      loadFromSupabase();
     }
   }, []); // 只在组件挂载时执行一次
 
