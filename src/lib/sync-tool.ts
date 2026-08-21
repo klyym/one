@@ -196,8 +196,11 @@ export async function syncAllDataToSupabase() {
             client_id: mappedClientId || null,
             designer_id: mappedDesignerId || null,
             status: project.status,
+            stage: project.stage || 'design',
             priority: project.priority,
             budget: project.budget,
+            contract_amount: project.contractAmount,
+            actual_cost: project.actualCost,
             area: project.area,
             address: project.location || project.address,
             style: project.style,
@@ -257,7 +260,7 @@ export async function syncAllDataToSupabase() {
             content: followUp.content,
             next_plan: followUp.nextAction,
             next_date: followUp.nextDate,
-            followed_by: mappedDesignerId,
+            designer_id: mappedDesignerId,
           };
           
           const result = await services.followUpService.create(mappedFollowUp);

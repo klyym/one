@@ -69,7 +69,7 @@ const mapClientToDb = {
     area: data.area,
     address: data.address || data.location,
     style: data.style,
-    overall_progress: data.overall_progress,
+    overall_progress: data.overall_progress || data.overallProgress,
     updates: data.updates,
     start_date: data.start_date || data.startDate,
     end_date: data.end_date || data.endDate,
@@ -83,7 +83,7 @@ const mapClientToDb = {
     content: data.content,
     next_plan: data.next_plan,
     next_date: data.next_date,
-    followed_by: data.followed_by,
+    designer_id: data.designer_id || data.followed_by || data.designerId,
   }),
 };
 
