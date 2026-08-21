@@ -69,6 +69,7 @@ export async function syncAllDataToSupabase() {
 
     let successCount = 0;
     let failCount = 0;
+    let skippedCount = 0;
 
     // ID 映射表：旧 ID -> 新 UUID
     const clientIdMap = new Map<string, string>();
@@ -80,6 +81,7 @@ export async function syncAllDataToSupabase() {
     if (clients && clients.length > 0) {
       if (await hasCloudData(services.clientService)) {
         console.log('⚠️ [SyncTool] 云端已有客户数据，跳过（避免重复）');
+        skippedCount++;
       } else {
         console.log(`📝 [SyncTool] 开始同步 ${clients.length} 个客户...`);
         for (const client of clients) {
@@ -108,6 +110,7 @@ export async function syncAllDataToSupabase() {
     if (designers && designers.length > 0) {
       if (await hasCloudData(services.designerService)) {
         console.log('⚠️ [SyncTool] 云端已有设计师数据，跳过（避免重复）');
+        skippedCount++;
       } else {
         console.log(`📝 [SyncTool] 开始同步 ${designers.length} 个设计师...`);
         for (const designer of designers) {
@@ -136,6 +139,7 @@ export async function syncAllDataToSupabase() {
     if (projects && projects.length > 0) {
       if (await hasCloudData(services.projectService)) {
         console.log('⚠️ [SyncTool] 云端已有项目数据，跳过（避免重复）');
+        skippedCount++;
       } else {
         console.log(`📝 [SyncTool] 开始同步 ${projects.length} 个项目...`);
         for (const project of projects) {
@@ -192,6 +196,7 @@ export async function syncAllDataToSupabase() {
     if (followUps && followUps.length > 0) {
       if (await hasCloudData(services.followUpService)) {
         console.log('⚠️ [SyncTool] 云端已有跟进记录，跳过（避免重复）');
+        skippedCount++;
       } else {
         console.log(`📝 [SyncTool] 开始同步 ${followUps.length} 条跟进记录...`);
         for (const followUp of followUps) {
@@ -231,10 +236,13 @@ export async function syncAllDataToSupabase() {
       localStorage.setItem('studio_last_sync', new Date().toISOString());
     }
 
-    console.log(`🎉 [SyncTool] 全量数据同步完成！成功: ${successCount}, 失败: ${failCount}`);
+    console.log(`🎉 [SyncTool] 全量数据同步完成！成功: ${successCount}, 失败: ${failCount}, 跳过: ${skippedCount}`);
+    const allSkipped = successCount === 0 && failCount === 0 && skippedCount > 0;
     return {
-      success: successCount > 0,
-      message: `数据同步完成：成功 ${successCount} 条，失败 ${failCount} 条`,
+      success: failCount === 0,
+      message: allSkipped
+        ? `数据已全部在云端（${skippedCount} 类已跳过，无需重复同步）`
+        : `数据同步完成：成功 ${successCount} 条，失败 ${failCount} 条${skippedCount > 0 ? `（${skippedCount} 类已有数据已跳过）` : ''}`,
       successCount,
       failCount
     };
