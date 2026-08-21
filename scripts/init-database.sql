@@ -164,6 +164,26 @@ CREATE INDEX IF NOT EXISTS idx_follow_ups_client_id ON follow_ups(client_id);
 CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
 CREATE INDEX IF NOT EXISTS idx_designers_email ON designers(email);
 
+-- 9. RLS 策略（公开读写，权限控制在应用层）
+-- 启用 RLS 并为每张表创建公开读写策略，否则浏览器端（anon key）无法读写
+ALTER TABLE studio_info ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE designers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_phases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE follow_ups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE health_check ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "public_all" ON studio_info FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_all" ON users FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_all" ON clients FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_all" ON designers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_all" ON projects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_all" ON project_phases FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_all" ON follow_ups FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "public_all" ON health_check FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================================================
 -- 完成！
 -- ============================================================================
