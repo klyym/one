@@ -436,9 +436,10 @@ export const projectService = {
 
   async update(id: string, updates: any) {
     const dbData = mapClientToDb.project(updates);
-    // 过滤 undefined 字段：更新时只发送有值的字段，避免把必填字段（如 name）写成 null
+    // 过滤 null/undefined 字段：更新时只发送有值的字段，
+    // 避免把必填字段（如 name）写成 null 违反非空约束，也避免覆盖未提供的字段
     const cleanData = Object.fromEntries(
-      Object.entries(dbData).filter(([, v]) => v !== undefined)
+      Object.entries(dbData).filter(([, v]) => v !== undefined && v !== null)
     );
     console.log('[ProjectService] 更新项目:', id, cleanData);
     const { data, error } = await client
