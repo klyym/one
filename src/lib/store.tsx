@@ -614,7 +614,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return initialProjects;
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.projects);
-      return stored ? JSON.parse(stored) : initialProjects;
+      if (stored) return JSON.parse(stored);
+      saveToStorage(STORAGE_KEYS.projects, initialProjects);
+      return initialProjects;
     } catch {
       return initialProjects;
     }
@@ -623,7 +625,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return initialClients;
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.clients);
-      return stored ? JSON.parse(stored) : initialClients;
+      if (stored) return JSON.parse(stored);
+      saveToStorage(STORAGE_KEYS.clients, initialClients);
+      return initialClients;
     } catch {
       return initialClients;
     }
@@ -632,7 +636,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return initialDesigners;
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.designers);
-      return stored ? JSON.parse(stored) : initialDesigners;
+      if (stored) return JSON.parse(stored);
+      saveToStorage(STORAGE_KEYS.designers, initialDesigners);
+      return initialDesigners;
     } catch {
       return initialDesigners;
     }
@@ -641,7 +647,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return initialFollowUps;
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.followUps);
-      return stored ? JSON.parse(stored) : initialFollowUps;
+      if (stored) return JSON.parse(stored);
+      saveToStorage(STORAGE_KEYS.followUps, initialFollowUps);
+      return initialFollowUps;
     } catch {
       return initialFollowUps;
     }
