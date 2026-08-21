@@ -35,11 +35,9 @@ export default function SyncTestButton() {
 
       setSyncStatus('success', '测试同步成功！请查看 Supabase 数据库');
       console.log('✅ [Sync Test] 测试完成');
-      
-      // 3 秒后重置状态
-      setTimeout(() => {
-        setSyncStatus('unknown', '');
-      }, 3000);
+
+      // 记录同步时间，保持"已同步"状态显示
+      localStorage.setItem('studio_last_sync', new Date().toISOString());
 
     } catch (error) {
       console.error('❌ [Sync Test] 测试失败:', error);
@@ -66,10 +64,7 @@ export default function SyncTestButton() {
         setSyncStatus('error', result.message);
       }
 
-      // 5 秒后重置状态
-      setTimeout(() => {
-        setSyncStatus('unknown', '');
-      }, 5000);
+      // 全量同步完成后保持状态显示（syncAllDataToSupabase 已写入同步时间）
 
     } catch (error) {
       console.error('❌ [Full Sync] 同步失败:', error);

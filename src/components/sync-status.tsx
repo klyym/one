@@ -32,8 +32,25 @@ export function getSyncStatus() {
   return globalSyncState;
 }
 
+// 初始化时从 localStorage 读取上次同步时间，避免每次刷新都显示"未同步"
+function getInitialState(): SyncState {
+  if (typeof window === 'undefined') return globalSyncState;
+  try {
+    const lastSync = localStorage.getItem('studio_last_sync');
+    if (lastSync) {
+      const t = new Date(lastSync);
+      if (!isNaN(t.getTime())) {
+        return { status: 'success', message: '', lastSyncTime: t.toLocaleTimeString() };
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return globalSyncState;
+}
+
 export function useSyncStatus() {
-  const [state, setState] = useState<SyncState>(globalSyncState);
+  const [state, setState] = useState<SyncState>(getInitialState);
 
   useEffect(() => {
     const listener = (newState: SyncState) => setState(newState);
