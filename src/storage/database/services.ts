@@ -436,10 +436,14 @@ export const projectService = {
 
   async update(id: string, updates: any) {
     const dbData = mapClientToDb.project(updates);
-    console.log('[ProjectService] 更新项目:', id, dbData);
+    // 过滤 undefined 字段：更新时只发送有值的字段，避免把必填字段（如 name）写成 null
+    const cleanData = Object.fromEntries(
+      Object.entries(dbData).filter(([, v]) => v !== undefined)
+    );
+    console.log('[ProjectService] 更新项目:', id, cleanData);
     const { data, error } = await client
       .from('projects')
-      .update({ ...dbData, updated_at: new Date().toISOString() })
+      .update({ ...cleanData, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .maybeSingle();

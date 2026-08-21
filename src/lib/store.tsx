@@ -164,8 +164,9 @@ const syncToSupabase = async (
         const mappedData = {
           ...restData,
           address: location || data.address,
-          client_id: mappedClientId || null,
-          designer_id: mappedDesignerId || null,
+          // 映射不到时不传（undefined 会被 services.update 过滤，保留数据库原值）
+          client_id: mappedClientId,
+          designer_id: mappedDesignerId,
           created_at: createdAt,
           updated_at: updatedAt,
         };
