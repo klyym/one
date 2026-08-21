@@ -318,7 +318,7 @@ const syncToSupabase = async (
 };
 
 // 初始数据
-const initialClients: Client[] = [
+export const initialClients: Client[] = [
   {
     id: '1',
     name: '张伟',
@@ -356,7 +356,7 @@ const initialClients: Client[] = [
   },
 ];
 
-const initialDesigners: Designer[] = [
+export const initialDesigners: Designer[] = [
   {
     id: '1',
     name: '陈设计师',
@@ -398,7 +398,7 @@ const initialDesigners: Designer[] = [
   },
 ];
 
-const initialProjects: Project[] = [
+export const initialProjects: Project[] = [
   {
     id: '1',
     name: '望京SOHO办公空间',
@@ -524,7 +524,7 @@ const initialProjects: Project[] = [
 ];
 
 // 初始跟进记录
-const initialFollowUps: FollowUp[] = [
+export const initialFollowUps: FollowUp[] = [
   {
     id: '1',
     clientId: '1',
